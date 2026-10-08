@@ -28,3 +28,5 @@
 - TypeScript strict mode
 - Vitest for testing
 - ESLint + Prettier for code quality
+- Never commit node_modules, dist, build, coverage, .env files
+- Only commit source files, configs, docs
