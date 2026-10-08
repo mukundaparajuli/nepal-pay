@@ -1,15 +1,13 @@
 import type {
-  PaymentGateway,
-  PaymentRequest,
-  PaymentResponse,
-  CallbackPayload,
-  VerifyOptions,
+  GatewayAdapter,
+  Checkout,
+  TxnRef,
   VerifiedPayment,
 } from '@nepal-payments/core'
 import { ConfigurationError } from '@nepal-payments/core'
 import type { KhaltiConfig } from './types.js'
 
-export class KhaltiGateway implements PaymentGateway {
+export class KhaltiGateway implements GatewayAdapter {
   readonly name = 'khalti' as const
 
   constructor(private readonly config: KhaltiConfig) {
@@ -18,15 +16,11 @@ export class KhaltiGateway implements PaymentGateway {
     }
   }
 
-  async initiate(request: PaymentRequest): Promise<PaymentResponse> {
-    return {
-      paymentUrl: '',
-      transactionId: undefined,
-      raw: {},
-    }
+  async initiate(): Promise<{ checkout: Checkout; txnRef: TxnRef }> {
+    throw new Error('Not implemented')
   }
 
-  async verify(payload: CallbackPayload, _options?: VerifyOptions): Promise<VerifiedPayment> {
+  async verify(): Promise<VerifiedPayment> {
     throw new Error('Not implemented')
   }
 }

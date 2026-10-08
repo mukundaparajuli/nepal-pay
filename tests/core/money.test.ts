@@ -148,7 +148,8 @@ describe('Money (bigint)', () => {
 
   it('throws when adding different currencies', () => {
     const a = moneyFromDecimal('10.00', 'NPR')
-    const b = { amount: 1000n, currency: 'USD' as any, precision: 2 }
+    const b = { amount: 1000n, currency: 'USD', precision: 2 }
+    // @ts-expect-error 'USD' is not a supported currency
     expect(() => addMoney(a, b)).toThrow(MoneyError)
   })
 
@@ -158,7 +159,8 @@ describe('Money (bigint)', () => {
   })
 
   it('throws on unsupported currency', () => {
-    expect(() => createMoney(1000, 'USD' as any)).toThrow(MoneyError)
+    // @ts-expect-error 'USD' is not a supported currency
+    expect(() => createMoney(1000, 'USD')).toThrow(MoneyError)
   })
 
   it('throws on invalid precision', () => {

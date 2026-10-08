@@ -1,15 +1,13 @@
 import type {
-  PaymentGateway,
-  PaymentRequest,
-  PaymentResponse,
-  CallbackPayload,
-  VerifyOptions,
+  GatewayAdapter,
+  Checkout,
+  TxnRef,
   VerifiedPayment,
 } from '@nepal-payments/core'
 import { ConfigurationError } from '@nepal-payments/core'
 import type { EsewaConfig } from './types.js'
 
-export class EsewaGateway implements PaymentGateway {
+export class EsewaGateway implements GatewayAdapter {
   readonly name = 'esewa' as const
 
   constructor(private readonly config: EsewaConfig) {
@@ -18,15 +16,11 @@ export class EsewaGateway implements PaymentGateway {
     }
   }
 
-  async initiate(request: PaymentRequest): Promise<PaymentResponse> {
-    return {
-      paymentUrl: '',
-      transactionId: undefined,
-      raw: {},
-    }
+  async initiate(): Promise<{ checkout: Checkout; txnRef: TxnRef }> {
+    throw new Error('Not implemented')
   }
 
-  async verify(payload: CallbackPayload, _options?: VerifyOptions): Promise<VerifiedPayment> {
+  async verify(): Promise<VerifiedPayment> {
     throw new Error('Not implemented')
   }
 }
