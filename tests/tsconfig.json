@@ -4,6 +4,7 @@
     "noEmit": true,
     "paths": {
       "@nepal-payments/core": ["../packages/core/src"],
+      "@nepal-payments/core/internal": ["../packages/core/src/internal.ts"],
       "@nepal-payments/esewa": ["../packages/esewa/src"],
       "@nepal-payments/khalti": ["../packages/khalti/src"]
     }

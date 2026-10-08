@@ -40,13 +40,14 @@ describe('Checkout', () => {
     expect(checkout.formParams).toEqual({ amt: '100.00', psc: '0' })
   })
 
-  it('allows form_post without formParams', () => {
+  it('rejects form_post without formParams', () => {
+    // @ts-expect-error formParams is required on form_post
     const checkout: Checkout = {
       type: 'form_post',
       url: 'https://example.com/pay',
     }
     expect(checkout.type).toBe('form_post')
-    expect(checkout.formParams).toBeUndefined()
+    expect('formParams' in checkout).toBe(false)
   })
 
   it('supports optional headers on both variants', () => {
@@ -58,6 +59,7 @@ describe('Checkout', () => {
     const formPost: Checkout = {
       type: 'form_post',
       url: 'https://example.com/pay',
+      formParams: { amt: '100.00' },
       headers: { 'X-Test': 'test' },
     }
     expect(redirect.headers?.['X-Test']).toBe('test')

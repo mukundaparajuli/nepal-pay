@@ -1,8 +1,11 @@
 import type { Money } from './money.js'
+import { isMoney } from './money.js'
 import type { TxnRef } from './txref.js'
 import type { PaymentStatus } from './status.js'
 import { isPaymentStatus } from './status.js'
+import { isPaymentMethod } from './method.js'
 import { PaymentError } from './errors.js'
+import { isValidOrderId } from './utils.js'
 
 const verifiedPaymentBrand: unique symbol = Symbol(
   'nepal-payments.verified-payment'
@@ -14,29 +17,17 @@ export interface VerifiedPayment {
   readonly amount: Money
   readonly status: PaymentStatus
   readonly txnRef: TxnRef
+  readonly verifiedAt: Date
   readonly raw?: Record<string, unknown>
 }
 
 export interface VerifiedPaymentInput {
+  readonly __unverified: true
   readonly orderId: string
   readonly amount: Money
   readonly status: PaymentStatus
   readonly txnRef: TxnRef
   readonly raw?: Record<string, unknown>
-}
-
-function isMoney(value: unknown): value is Money {
-  if (typeof value !== 'object' || value === null) return false
-  const candidate = value as {
-    amount?: unknown
-    currency?: unknown
-    precision?: unknown
-  }
-  return (
-    typeof candidate.amount === 'bigint' &&
-    candidate.currency === 'NPR' &&
-    typeof candidate.precision === 'number'
-  )
 }
 
 function isTxnRef(value: unknown): value is TxnRef {
@@ -45,23 +36,61 @@ function isTxnRef(value: unknown): value is TxnRef {
   return (
     typeof candidate.id === 'string' &&
     candidate.id.length > 0 &&
-    typeof candidate.gateway === 'string' &&
-    candidate.gateway.length > 0
+    isPaymentMethod(candidate.gateway)
   )
+}
+
+function isRawRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === 'object') {
+    Object.freeze(value)
+    for (const key of Object.keys(value as object)) {
+      deepFreeze((value as Record<string, unknown>)[key])
+    }
+  }
+  return value
+}
+
+function cloneAndFreezeRaw(
+  raw: Record<string, unknown>
+): Record<string, unknown> {
+  let cloned: Record<string, unknown>
+  try {
+    cloned = structuredClone(raw)
+  } catch {
+    throw new PaymentError(
+      'Verified payment raw data must be structured-cloneable'
+    )
+  }
+  return deepFreeze(cloned)
 }
 
 export function createVerifiedPayment(
   input: VerifiedPaymentInput
 ): VerifiedPayment {
-  if (typeof input.orderId !== 'string' || input.orderId.length === 0) {
+  if (input.__unverified !== true) {
     throw new PaymentError(
-      'Verified payment requires a non-empty orderId',
+      'Verified payment input must carry the __unverified marker'
+    )
+  }
+  if (!isValidOrderId(input.orderId)) {
+    throw new PaymentError(
+      'Verified payment requires a valid orderId',
       'INVALID_ORDER_ID'
     )
   }
   if (!isMoney(input.amount)) {
     throw new PaymentError(
       'Verified payment requires a valid Money amount',
+      'INVALID_AMOUNT'
+    )
+  }
+  if (input.amount.amount <= 0n) {
+    throw new PaymentError(
+      'Verified payment amount must be positive',
       'INVALID_AMOUNT'
     )
   }
@@ -77,10 +106,46 @@ export function createVerifiedPayment(
       'INVALID_TXN_REF'
     )
   }
-  return { ...input, [verifiedPaymentBrand]: true }
+
+  const payment: Record<string, unknown> = {
+    orderId: input.orderId,
+    amount: Object.freeze({ ...input.amount }),
+    status: input.status,
+    txnRef: Object.freeze({ ...input.txnRef }),
+    verifiedAt: Object.freeze(new Date()),
+  }
+  if (input.raw !== undefined) {
+    if (!isRawRecord(input.raw)) {
+      throw new PaymentError('Verified payment raw data must be a plain object')
+    }
+    payment.raw = cloneAndFreezeRaw(input.raw)
+  }
+
+  Object.defineProperty(payment, verifiedPaymentBrand, {
+    value: true,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  })
+  Object.freeze(payment)
+  return payment as unknown as VerifiedPayment
 }
 
 export function isVerifiedPayment(value: unknown): value is VerifiedPayment {
   if (typeof value !== 'object' || value === null) return false
-  return (value as Record<symbol, unknown>)[verifiedPaymentBrand] === true
+  const descriptor = Object.getOwnPropertyDescriptor(
+    value,
+    verifiedPaymentBrand
+  )
+  if (descriptor === undefined) return false
+  return (
+    descriptor.value === true &&
+    descriptor.enumerable === false &&
+    descriptor.writable === false &&
+    descriptor.configurable === false
+  )
+}
+
+export function isCompletedPayment(value: unknown): boolean {
+  return isVerifiedPayment(value) && value.status === 'completed'
 }

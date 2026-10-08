@@ -11,7 +11,12 @@ import {
   isZero,
   isPositive,
   isNegative,
+  isMoney,
+  moneyToJSON,
+  moneyFromJSON,
   MoneyError,
+  type Currency,
+  type Money,
 } from '@nepal-payments/core'
 
 describe('Money (bigint)', () => {
@@ -166,5 +171,115 @@ describe('Money (bigint)', () => {
   it('throws on invalid precision', () => {
     expect(() => createMoney(1000, 'NPR', -1)).toThrow(MoneyError)
     expect(() => createMoney(1000, 'NPR', 1.5)).toThrow(MoneyError)
+  })
+})
+
+describe('money validation regressions', () => {
+  it('rejects an unsupported currency in moneyFromDecimal', () => {
+    // @ts-expect-error 'USD' is not a supported currency
+    expect(() => moneyFromDecimal('10.00', 'USD')).toThrow(MoneyError)
+  })
+
+  it('rejects a non-integer precision in moneyFromDecimal', () => {
+    expect(() => moneyFromDecimal('10.00', 'NPR', 1.5)).toThrow(MoneyError)
+    expect(() => moneyFromDecimal('10.00', 'NPR', -1)).toThrow(MoneyError)
+  })
+
+  it('rejects unsafe integer amounts', () => {
+    const unsafeInteger = Number('9007199254740993')
+    expect(Number.isSafeInteger(unsafeInteger)).toBe(false)
+    expect(() => createMoney(unsafeInteger)).toThrow(MoneyError)
+  })
+
+  it('accepts bigint and string amounts beyond the safe integer range', () => {
+    expect(createMoney(9007199254740993n).amount).toBe(9007199254740993n)
+    expect(createMoney('9007199254740993').amount).toBe(9007199254740993n)
+  })
+
+  it('rejects unsafe multipliers', () => {
+    const unsafeInteger = Number('9007199254740993')
+    expect(() =>
+      multiplyMoney(moneyFromDecimal('10.00'), unsafeInteger)
+    ).toThrow(MoneyError)
+  })
+
+  it('compares money across precisions', () => {
+    const precision2 = moneyFromDecimal('1.05')
+    const precision1 = moneyFromDecimal('1.0', 'NPR', 1)
+    expect(compareMoney(precision2, precision1)).toBe(1)
+    expect(compareMoney(precision1, precision2)).toBe(-1)
+    expect(compareMoney(moneyFromDecimal('1.00'), precision1)).toBe(0)
+  })
+
+  it('checks equality across precisions', () => {
+    expect(
+      moneyEquals(moneyFromDecimal('10.00'), moneyFromDecimal('10.0', 'NPR', 1))
+    ).toBe(true)
+    expect(
+      moneyEquals(moneyFromDecimal('10.00'), moneyFromDecimal('10.50'))
+    ).toBe(false)
+  })
+
+  it('returns false from moneyEquals for mismatched currencies', () => {
+    const usd = {
+      amount: 1000n,
+      currency: 'USD',
+      precision: 2,
+    } as unknown as Money
+    expect(moneyEquals(moneyFromDecimal('10.00'), usd)).toBe(false)
+  })
+
+  it('throws from compareMoney for mismatched currencies', () => {
+    const usd = {
+      amount: 1000n,
+      currency: 'USD',
+      precision: 2,
+    } as unknown as Money
+    expect(() => compareMoney(moneyFromDecimal('10.00'), usd)).toThrow(
+      MoneyError
+    )
+  })
+
+  it('round-trips money through JSON', () => {
+    const money = moneyFromDecimal('123456.78')
+    const json = moneyToJSON(money)
+    expect(json).toEqual({ amount: '12345678', currency: 'NPR', precision: 2 })
+    expect(moneyFromJSON(json)).toEqual(money)
+    expect(moneyFromJSON(moneyToJSON(moneyFromDecimal('-50.25'))).amount).toBe(
+      -5025n
+    )
+  })
+
+  it('rejects malformed money JSON', () => {
+    expect(() => moneyFromJSON(null)).toThrow(MoneyError)
+    expect(() => moneyFromJSON('10000')).toThrow(MoneyError)
+    expect(() =>
+      moneyFromJSON({ amount: 1, currency: 'NPR', precision: 2 })
+    ).toThrow(MoneyError)
+    expect(() =>
+      moneyFromJSON({ amount: '1.5', currency: 'NPR', precision: 2 })
+    ).toThrow(MoneyError)
+    expect(() =>
+      moneyFromJSON({ amount: '10', currency: 'USD', precision: 2 })
+    ).toThrow(MoneyError)
+    expect(() =>
+      moneyFromJSON({ amount: '10', currency: 'NPR', precision: -1 })
+    ).toThrow(MoneyError)
+  })
+
+  it('narrows runtime shapes with isMoney', () => {
+    expect(isMoney(moneyFromDecimal('1.00'))).toBe(true)
+    expect(isMoney({ amount: 100, currency: 'NPR', precision: 2 })).toBe(false)
+    expect(isMoney({ amount: 10n, currency: 'NPR', precision: 1.5 })).toBe(
+      false
+    )
+    expect(isMoney({ amount: 10n, currency: 'USD', precision: 2 })).toBe(false)
+    expect(isMoney(null)).toBe(false)
+    expect(isMoney('10000')).toBe(false)
+  })
+
+  it('keeps Currency assignable only to NPR', () => {
+    const currency: Currency = 'NPR'
+    expect(currency).toBe('NPR')
   })
 })

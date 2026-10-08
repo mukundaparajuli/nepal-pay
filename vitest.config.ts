@@ -8,10 +8,23 @@ export default defineConfig({
     include: ['tests/**/*.test.ts', 'packages/**/*.test.ts'],
   },
   resolve: {
-    alias: {
-      '@nepal-payments/core': path.resolve(__dirname, './packages/core/src'),
-      '@nepal-payments/esewa': path.resolve(__dirname, './packages/esewa/src'),
-      '@nepal-payments/khalti': path.resolve(__dirname, './packages/khalti/src'),
-    },
+    alias: [
+      {
+        find: '@nepal-payments/core/internal',
+        replacement: path.resolve(__dirname, './packages/core/src/internal.ts'),
+      },
+      {
+        find: '@nepal-payments/core',
+        replacement: path.resolve(__dirname, './packages/core/src'),
+      },
+      {
+        find: '@nepal-payments/esewa',
+        replacement: path.resolve(__dirname, './packages/esewa/src'),
+      },
+      {
+        find: '@nepal-payments/khalti',
+        replacement: path.resolve(__dirname, './packages/khalti/src'),
+      },
+    ],
   },
 })

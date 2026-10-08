@@ -9,6 +9,6 @@ export type Checkout =
   | {
       readonly type: 'form_post'
       readonly url: string
-      readonly formParams?: Record<string, string>
+      readonly formParams: Record<string, string>
       readonly headers?: Record<string, string>
     }
