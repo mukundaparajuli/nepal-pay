@@ -9,7 +9,7 @@ export interface Money {
 }
 
 const SUPPORTED_CURRENCIES: Currency[] = ['NPR']
-const DEFAULT_PRECISION = 2 // NPR has 2 decimal places (paisa)
+const DEFAULT_PRECISION = 2
 
 export function createMoney(
   amount: bigint | number | string,
@@ -58,14 +58,17 @@ export function moneyFromDecimal(
     throw new MoneyError('Invalid decimal format')
   }
 
-  const [intPart, fracPart = ''] = trimmed.split('.')
-  if (fracPart.length > precision) {
+  const parts = trimmed.split('.')
+  const intPartStr = parts[0] ?? '0'
+  const fracPartStr = parts[1] ?? ''
+
+  if (fracPartStr.length > precision) {
     throw new MoneyError(`Decimal has more fractional digits than precision ${precision}`)
   }
 
-  const paddedFrac = fracPart.padEnd(precision, '0')
-  const sign = intPart.startsWith('-') ? '-' : ''
-  const absInt = intPart.replace(/^-/, '') || '0'
+  const paddedFrac = fracPartStr.padEnd(precision, '0')
+  const sign = intPartStr.startsWith('-') ? '-' : ''
+  const absInt = intPartStr.replace(/^-/, '') || '0'
   const scaledStr = sign + absInt + paddedFrac
 
   return {
