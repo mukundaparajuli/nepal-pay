@@ -30,3 +30,14 @@ export class ConfigurationError extends Error {
     this.name = 'ConfigurationError'
   }
 }
+
+export class MoneyError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+    public readonly details?: unknown
+  ) {
+    super(message)
+    this.name = 'MoneyError'
+  }
+}
