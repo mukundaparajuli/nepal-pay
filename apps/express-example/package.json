@@ -1,0 +1,11 @@
+{
+  "name": "@nepal-payments/express-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Express example placeholder'",
+    "build": "echo 'Express example placeholder'",
+    "start": "echo 'Express example placeholder'"
+  }
+}

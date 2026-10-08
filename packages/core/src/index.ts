@@ -1,0 +1,3 @@
+export const core = {
+  version: '0.1.0',
+}

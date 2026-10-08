@@ -1,0 +1,11 @@
+{
+  "name": "@nepal-payments/next-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Next.js example placeholder'",
+    "build": "echo 'Next.js example placeholder'",
+    "start": "echo 'Next.js example placeholder'"
+  }
+}

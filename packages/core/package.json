@@ -1,0 +1,23 @@
+{
+  "name": "@nepal-payments/core",
+  "version": "0.1.0",
+  "description": "Core types and utilities for Nepal payment gateway SDK",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  }
+}
