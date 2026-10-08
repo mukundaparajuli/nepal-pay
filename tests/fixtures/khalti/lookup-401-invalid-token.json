@@ -1,0 +1,17 @@
+{
+  "url": "https://dev.khalti.com/api/v2/epayment/lookup/",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Key test_secret_key_probe",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "pidx": "bZQLD9wRVWo4CdESSfuSsB"
+  },
+  "response_status": 401,
+  "response": {
+    "detail": "Invalid token.",
+    "status_code": 401
+  },
+  "provenance": "live capture 2026-10-08 via curl against https://dev.khalti.com with a deliberately invalid sandbox secret key. The same body with no Authorization header returns {\"detail\":\"Authentication credentials were not provided.\",\"status_code\":401}."
+}

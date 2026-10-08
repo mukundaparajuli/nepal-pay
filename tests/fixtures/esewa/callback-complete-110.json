@@ -1,0 +1,9 @@
+{
+  "status": "COMPLETE",
+  "signature": "62GcfZTmVkzhtUeh+QJ1AqiJrjoWWGof3U+eTPTZ7fA=",
+  "transaction_code": "000AWEO",
+  "total_amount": 110.0,
+  "transaction_uuid": "240610-162413",
+  "product_code": "EPAYTEST",
+  "signed_field_names": "transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names"
+}

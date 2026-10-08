@@ -1,6 +1,7 @@
 # AGENTS.md
 
 ## Architecture
+
 - Stateless by default
 - Web APIs where possible
 - No framework dependency in core
@@ -9,6 +10,7 @@
 - No gateway-specific logic in core
 
 ## Security
+
 - Callbacks are untrusted
 - Only verify() creates VerifiedPayment
 - Verify amount
@@ -19,11 +21,13 @@
 - Never log secrets
 
 ## Testing
+
 - Every feature requires tests
 - Every gateway requires fixtures
 - Typecheck and tests must pass before completion
 
 ## Development
+
 - Use pnpm workspaces
 - TypeScript strict mode
 - Vitest for testing

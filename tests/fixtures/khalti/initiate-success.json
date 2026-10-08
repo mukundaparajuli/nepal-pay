@@ -1,0 +1,28 @@
+{
+  "url": "https://dev.khalti.com/api/v2/epayment/initiate/",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Key <secret_key>",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "return_url": "https://example.com/payment/",
+    "website_url": "https://example.com/",
+    "amount": "1000",
+    "purchase_order_id": "test12",
+    "purchase_order_name": "test",
+    "customer_info": {
+      "name": "Khalti Bahadur",
+      "email": "example@gmail.com",
+      "phone": "9800000123"
+    }
+  },
+  "response_status": 200,
+  "response": {
+    "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+    "payment_url": "https://test-pay.khalti.com/?pidx=bZQLD9wRVWo4CdESSfuSsB",
+    "expires_at": "2023-05-25T16:26:16.471649+05:45",
+    "expires_in": 1800
+  },
+  "provenance": "docs-derived from https://docs.khalti.com/khalti-epayment (Web Checkout KPG-2), sandbox example"
+}

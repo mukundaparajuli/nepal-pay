@@ -1,0 +1,17 @@
+{
+  "method": "GET",
+  "url": "https://example.com/payment/?pidx=bZQLD9wRVWo4CdESSfuSsB&txnId=4H7AhoXDJWg5WjrcPT9ixW&amount=1000&total_amount=1000&status=Completed&mobile=98XXXXX904&tidx=4H7AhoXDJWg5WjrcPT9ixW&purchase_order_id=test12&purchase_order_name=test&transaction_id=4H7AhoXDJWg5WjrcPT9ixW",
+  "query": {
+    "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+    "txnId": "4H7AhoXDJWg5WjrcPT9ixW",
+    "amount": "1000",
+    "total_amount": "1000",
+    "status": "Completed",
+    "mobile": "98XXXXX904",
+    "tidx": "4H7AhoXDJWg5WjrcPT9ixW",
+    "purchase_order_id": "test12",
+    "purchase_order_name": "test",
+    "transaction_id": "4H7AhoXDJWg5WjrcPT9ixW"
+  },
+  "provenance": "docs-derived from https://docs.khalti.com/khalti-epayment 'Payment Success Callback - Sample Callback Request'. Amounts are in paisa. No payment signature; correctness is established via the lookup API."
+}

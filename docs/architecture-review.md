@@ -1,17 +1,20 @@
 # Architecture Review: Breaking the Abstraction
 
 ## Intent
+
 Critically examine the proposed minimal abstraction (PaymentRequest, PaymentResponse, VerifiedPayment, PaymentGateway) against real gateway behaviors from research.
 
 ## Potential Breaking Cases
 
 ### 1. eSewa
+
 - **Form field naming**: eSewa uses specific parameter names (e.g., amt, pid, scd/merchant code, su/fu). Our generic `productName` is fine, but mapping is straightforward.
 - **ePaisa V2 variations**: May have different endpoints/params than classic eSewa.
 - **Checksum calculation**: Signature string concatenation order is critical and gateway-specific. Abstraction is fine - impl handles it.
 - **Cannot represent well?**: Maybe product/service code fields - we have metadata as escape hatch. OK.
 
 ### 2. Khalti (v2, REST API)
+
 - **API-first flow**: Initiate requires API call to get payment URL; also needs authorization headers with secret key. This fits our `initiate()` returning `paymentUrl` - abstraction holds.
 - **Amount in paisa**: Some APIs expect paisa (integer). Others NPR. Our Money uses decimal string - impl must convert. This is acceptable (gateway-specific concern).
 - **Mobile/checkout types**: Khalti has different flows (mobile SDK, web). But for web redirect/API flows, abstraction is fine.
@@ -19,6 +22,7 @@ Critically examine the proposed minimal abstraction (PaymentRequest, PaymentResp
 - **Cannot represent?**: Maybe "purchase order ID" vs "transaction ID" naming differs. We have both orderId and transactionId - reasonable.
 
 ### 3. ConnectIPS
+
 - **HMAC signature on every request**: Request signing is gateway-specific. Abstraction doesn't constrain.
 - **Token-based auth**: May need to get token first? Or auth via headers. Implementation detail.
 - **Multiple payment channels**: May require specifying channel. Could go in metadata or config. Acceptable.
@@ -27,6 +31,7 @@ Critically examine the proposed minimal abstraction (PaymentRequest, PaymentResp
 - **Potential issue**: May need to include more fields (reference ID, remarks) - metadata covers.
 
 ### 4. Fonepay
+
 - **DV (Data Verification) field**: Central to Fonepay. Signature generation order is strict. Impl handles.
 - **Form POST only**: Redirect is form submission (not GET). But `paymentUrl` is still where to POST to - app constructs form. Abstraction allows.
 - **Callback verification**: DV on response must match. Our verify() must compute/check - fits.
@@ -44,6 +49,7 @@ Critically examine the proposed minimal abstraction (PaymentRequest, PaymentResp
 ## Where abstraction breaks
 
 **Real breaking cases:**
+
 - **Fonepay/Fonepay-like**: May require fields like "PRN" (Payment Reference Number) format constraints, or additional merchant fields. If gateway mandates a field not in common set, we either put in metadata (loses type safety) or extend types. Current abstraction is leaky in typing.
 - **ConnectIPS**: May have different request/response shapes that don't map cleanly. For example, some flows need to specify "remarks" as mandatory in certain contexts? Unknown without full official docs.
 - **3DS/extra auth**: Not captured. Some flows may require additional redirect steps. But final paymentUrl still fits.

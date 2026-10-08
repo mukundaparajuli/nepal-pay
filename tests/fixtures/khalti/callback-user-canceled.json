@@ -1,0 +1,16 @@
+{
+  "method": "GET",
+  "url": "https://example.com/payment/?pidx=bZQLD9wRVWo4CdESSfuSsB&transaction_id=&tidx=&amount=1000&total_amount=1000&mobile=&status=User%20canceled&purchase_order_id=test12&purchase_order_name=test",
+  "query": {
+    "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+    "transaction_id": "",
+    "tidx": "",
+    "amount": "1000",
+    "total_amount": "1000",
+    "mobile": "",
+    "status": "User canceled",
+    "purchase_order_id": "test12",
+    "purchase_order_name": "test"
+  },
+  "provenance": "docs-derived from https://docs.khalti.com/khalti-epayment 'Canceled transaction callback'. Amounts are in paisa. Note the callback 'status' field is only informational; the lookup API is authoritative."
+}

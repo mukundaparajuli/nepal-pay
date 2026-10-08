@@ -1,0 +1,21 @@
+{
+  "url": "https://dev.khalti.com/api/v2/epayment/initiate/",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Key test_secret_key_probe",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "return_url": "https://example.com/cb",
+    "website_url": "https://example.com",
+    "amount": 1000,
+    "purchase_order_id": "probe1",
+    "purchase_order_name": "probe"
+  },
+  "response_status": 401,
+  "response": {
+    "detail": "Invalid token.",
+    "status_code": 401
+  },
+  "provenance": "live capture 2026-10-08 via curl against https://dev.khalti.com with a deliberately invalid sandbox secret key"
+}

@@ -12,6 +12,7 @@
 ## Design Philosophy
 
 Based on research of the four gateways (eSewa, Khalti, ConnectIPS, Fonepay), they share common patterns but differ in implementation:
+
 - Some use form redirects (eSewa, Fonepay), others use REST API + redirect (Khalti, ConnectIPS)
 - All require signature/HMAC verification
 - All need server-side verification of callbacks
@@ -20,10 +21,13 @@ Based on research of the four gateways (eSewa, Khalti, ConnectIPS, Fonepay), the
 ## Core Abstractions
 
 ### Money
+
 Represent money as `{ amount: string, currency: 'NPR' }` to avoid floating point precision issues.
 
 ### PaymentRequest
+
 Minimal common fields across all gateways:
+
 - orderId: unique identifier (merchant-controlled)
 - amount: Money
 - productName/productDescription
@@ -33,16 +37,21 @@ Minimal common fields across all gateways:
 - metadata (gateway-agnostic extra data)
 
 ### PaymentResponse
+
 Common response from initiating payment:
+
 - paymentUrl: URL to redirect user to complete payment
 - transactionId: gateway's transaction ID if returned
 - raw: gateway-specific response for debugging (never logged with secrets)
 
 ### CallbackPayload
+
 Generic key-value map for callback data - treated as untrusted input. Core never interprets it.
 
 ### VerifiedPayment
+
 Only created by `verify()` after successful validation:
+
 - orderId, transactionId
 - amount (verified)
 - status
@@ -50,11 +59,15 @@ Only created by `verify()` after successful validation:
 - raw (original payload)
 
 ### PaymentGateway Interface
+
 ```ts
 interface PaymentGateway {
   readonly name: PaymentMethod
   initiate(request: PaymentRequest): Promise<PaymentResponse>
-  verify(payload: CallbackPayload, options?: VerifyOptions): Promise<VerifiedPayment>
+  verify(
+    payload: CallbackPayload,
+    options?: VerifyOptions
+  ): Promise<VerifiedPayment>
 }
 ```
 

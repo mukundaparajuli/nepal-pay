@@ -1,49 +1,71 @@
-import type {
-  GatewayAdapter,
-  CheckoutResult,
-  VerifiedPayment,
-  UnverifiedCallback,
-  PaymentMethod,
+import {
+  type CheckoutResult,
+  type GatewayAdapter,
+  type Order,
+  type RawCallbackRequest,
+  type TxnRef,
+  type UnverifiedCallback,
+  type VerifyOptions,
+  type VerifiedPayment,
 } from '@nepal-payments/core'
-import { ConfigurationError } from '@nepal-payments/core'
-import type { EsewaConfig } from './types.js'
+import type {
+  EsewaConfig,
+  EsewaCheckoutOptions,
+  EsewaStatusOptions,
+} from './types.js'
+import { resolveConfig } from './config.js'
+import { buildEsewaCheckout } from './checkout.js'
+import { parseEsewaCallback } from './callback.js'
+import { checkEsewaStatus, verifyEsewaPayment } from './verify.js'
+
+export function createEsewa(input: EsewaConfig): EsewaGateway {
+  return new EsewaGateway(resolveConfig(input))
+}
 
 export class EsewaGateway implements GatewayAdapter {
-  readonly name: PaymentMethod = 'esewa'
+  readonly name = 'esewa' as const
 
-  constructor(private readonly config: EsewaConfig) {
-    if (!config.merchantCode) {
-      throw new ConfigurationError('Merchant code is required')
+  constructor(readonly config: ReturnType<typeof resolveConfig>) {}
+
+  async createCheckout(
+    order: Order,
+    options?: EsewaCheckoutOptions
+  ): Promise<CheckoutResult> {
+    const built = await buildEsewaCheckout(this.config, order, options)
+    return {
+      checkout: built.checkout,
+      txnRef: { id: built.transactionUuid, gateway: 'esewa' },
     }
   }
 
-  async createCheckout(): Promise<CheckoutResult> {
-    throw new ConfigurationError(
-      'Esewa createCheckout is not implemented',
-      'NOT_IMPLEMENTED'
-    )
+  parseCallback(request: RawCallbackRequest): UnverifiedCallback {
+    return parseEsewaCallback(request)
   }
 
-  parseCallback(): UnverifiedCallback {
-    throw new ConfigurationError(
-      'Esewa parseCallback is not implemented',
-      'NOT_IMPLEMENTED'
-    )
+  verify(
+    callback: UnverifiedCallback,
+    options: VerifyOptions
+  ): Promise<VerifiedPayment> {
+    return verifyEsewaPayment(this.config, callback, options.expected)
   }
 
-  async verify(): Promise<VerifiedPayment> {
-    throw new ConfigurationError(
-      'Esewa verify is not implemented',
-      'NOT_IMPLEMENTED'
-    )
-  }
-
-  async status(): Promise<VerifiedPayment> {
-    throw new ConfigurationError(
-      'Esewa status is not implemented',
-      'NOT_IMPLEMENTED'
-    )
+  status(
+    txnRef: TxnRef,
+    options?: EsewaStatusOptions
+  ): Promise<VerifiedPayment> {
+    return checkEsewaStatus(this.config, txnRef, options)
   }
 }
 
 export * from './types.js'
+export {
+  buildSignatureMessage,
+  signFields,
+  verifySignedFields,
+  decodeRawJsonTokens,
+} from './signing.js'
+export { mapEsewaStatus } from './status.js'
+export {
+  CHECKOUT_SIGNED_FIELD_NAMES,
+  TRANSACTION_UUID_PATTERN,
+} from './constants.js'

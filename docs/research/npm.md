@@ -1,9 +1,11 @@
 # NPM Search Research: Nepal Payment TypeScript/Node SDKs
 
 ## Search Date
+
 2026-10-08
 
 ## Search Queries Used
+
 - "nepal payment esewa khalti typescript sdk"
 - "esewa typescript node"
 - "khalti typescript node"
@@ -14,6 +16,7 @@
 ### Existing Packages
 
 #### nepal-pay
+
 - **Package**: [nepal-pay](https://www.npmjs.com/package/nepal-pay) (v1.0.0)
 - **Description**: Unified, type-safe Nepal payment gateway SDK for eSewa (ePaisa V2), Khalti (V2), and Fonepay. Works with Node.js, Bun, Next.js, and TypeScript.
 - **Keywords**: nepal, payment, esewa, khalti, fonepay, epaisa, epayment, gateway, sdk, typescript, nextjs, fintech
@@ -24,6 +27,7 @@
 - **Notes**: Supports all major Nepal gateways (eSewa, Khalti, Fonepay)
 
 #### khalti-payment
+
 - **Package**: [khalti-payment](https://www.npmjs.com/package/khalti-payment) (v1.0.2)
 - **Description**: A Node.js module for interacting with the Khalti payment gateway (initiate payments and status lookup)
 - **Keywords**: khalti, payment, gateway, api
@@ -33,6 +37,7 @@
 - **Status**: Inactive/low maintenance
 
 #### Other related
+
 - Various utility packages exist (nepal-places, nepali-calendar, etc.) but not payment SDKs
 - n8n-nodes-khalti exists as an n8n integration
 - esewa-mcp exists as an MCP server
@@ -40,6 +45,7 @@
 ## API Design Observations
 
 nepal-pay (most comprehensive):
+
 - Unified API supporting multiple gateways
 - TypeScript-first with type safety
 - Works across Node.js, Bun, Next.js

@@ -1,0 +1,10 @@
+{
+  "status": "COMPLETE",
+  "signature": "ApAgFaOH8B1900oTI62Il9Gvl5C6Y87M0W6a1lRrK10=",
+  "transaction_code": "0004T5I",
+  "total_amount": 230,
+  "transaction_uuid": "12-6-23",
+  "product_code": "EPAYTEST",
+  "success_url": "https://esewa.com.np",
+  "signed_field_names": "transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names"
+}
