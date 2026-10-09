@@ -62,7 +62,28 @@ cryptographic authenticity proof):
 non-`http(s)` URLs. Runtime adapters should wrap untrusted input in
 `createOrder()` before calling `createCheckout()`.
 
+## Server-side confirmation
+
+Signature checks alone are not always enough. `verify()` additionally confirms
+the transaction against the gateway before sealing:
+
+- **eSewa** — a `COMPLETE` callback triggers the status API; `ref_id` must match
+  `transaction_code` and the status must agree.
+- **Khalti** — the lookup API must report the payment as successful; the
+  redirect query is never trusted on its own.
+
+Never replace `verify()` with a hand-rolled signature check, and never treat a
+client redirect as proof of payment.
+
 ## Sandbox vs live
 
-`GatewayConfig.sandbox` selects the endpoint set. Treat sandbox credentials as
-real secrets; never ship sandbox or live credentials in client code.
+The `environment` option (`'sandbox' | 'production'`) selects the credential
+set and default endpoints; overriding endpoints must match the credentials.
+Treat sandbox credentials as real secrets; never ship sandbox or live
+credentials in client code.
+
+## See also
+
+- [Errors](./errors.md) — verification failure codes
+- [Troubleshooting](./troubleshooting.md) — symptom-driven diagnosis
+- [Testing](./testing.md) — exercising the failure paths with the mock gateway

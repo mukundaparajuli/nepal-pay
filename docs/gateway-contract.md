@@ -85,7 +85,8 @@ export interface TxnRef {
 ## PaymentMethod and PaymentStatus
 
 ```ts
-export type PaymentMethod = 'esewa' | 'khalti' | 'connectips' | 'fonepay'
+export type PaymentMethod =
+  'esewa' | 'khalti' | 'connectips' | 'fonepay' | 'mock'
 export const PAYMENT_METHODS: readonly PaymentMethod[]
 
 export type PaymentStatus =

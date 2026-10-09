@@ -1,87 +1,150 @@
-# Architecture Design
+# Architecture
 
 ## Principles
 
-- **Stateless by default**: No internal state, no sessions, no database dependencies
-- **Web APIs where possible**: Focus on HTTP-based integrations, no framework lock-in
-- **No framework dependency in core**: Core is pure TypeScript/JavaScript with no external deps
-- **No database dependency**: Everything passed in/returned out
-- **No floating point money**: All monetary values as decimal strings (e.g., "1000.00")
-- **No gateway-specific logic in core**: Core defines abstractions only
+- **Stateless by default** — no sessions, no database, no hidden state. The SDK
+  turns an `Order` into a checkout, and turns an untrusted callback into a
+  sealed `VerifiedPayment`.
+- **No framework lock-in** — pure functions and plain objects. The example apps
+  show Express, Hono, and Next.js, but core depends on none of them.
+- **No floating point money** — amounts are `bigint` minor units.
+- **No gateway-specific logic in core** — the contract lives in
+  `@nepal-payments/core`; each gateway implements it in its own package.
+- **Verify before trust** — only `verify()` produces a `VerifiedPayment`.
 
-## Design Philosophy
+## Packages
 
-Based on research of the four gateways (eSewa, Khalti, ConnectIPS, Fonepay), they share common patterns but differ in implementation:
+```
+packages/
+├── core/    types, Money, Order, errors, crypto utils, GatewayAdapter
+├── esewa/   eSewa ePay V2 (form POST) implementation
+├── khalti/  Khalti ePayment (REST redirect) implementation
+└── mock/    in-memory gateway for tests and local development
+apps/
+├── express-example/
+├── hono-example/
+└── next-example/
+```
 
-- Some use form redirects (eSewa, Fonepay), others use REST API + redirect (Khalti, ConnectIPS)
-- All require signature/HMAC verification
-- All need server-side verification of callbacks
-- All require amount and order validation
+`core` has no external runtime dependencies. Each gateway depends on `core`
+only; the mock depends on `core`. Apps depend on `core` + one gateway (the
+examples use `mock`).
 
-## Core Abstractions
+## The gateway contract
 
-### Money
-
-Represent money as `{ amount: string, currency: 'NPR' }` to avoid floating point precision issues.
-
-### PaymentRequest
-
-Minimal common fields across all gateways:
-
-- orderId: unique identifier (merchant-controlled)
-- amount: Money
-- productName/productDescription
-- customer info (optional)
-- returnUrl, failureUrl (user redirect)
-- callbackUrl (server-to-server, optional)
-- metadata (gateway-agnostic extra data)
-
-### PaymentResponse
-
-Common response from initiating payment:
-
-- paymentUrl: URL to redirect user to complete payment
-- transactionId: gateway's transaction ID if returned
-- raw: gateway-specific response for debugging (never logged with secrets)
-
-### CallbackPayload
-
-Generic key-value map for callback data - treated as untrusted input. Core never interprets it.
-
-### VerifiedPayment
-
-Only created by `verify()` after successful validation:
-
-- orderId, transactionId
-- amount (verified)
-- status
-- method (gateway type)
-- raw (original payload)
-
-### PaymentGateway Interface
+Every gateway is a `GatewayAdapter`:
 
 ```ts
-interface PaymentGateway {
+interface GatewayAdapter {
   readonly name: PaymentMethod
-  initiate(request: PaymentRequest): Promise<PaymentResponse>
+  createCheckout(order: Order): Promise<CheckoutResult>
+  parseCallback(request: RawCallbackRequest): UnverifiedCallback
   verify(
-    payload: CallbackPayload,
-    options?: VerifyOptions
+    callback: UnverifiedCallback,
+    options: { expected: Order }
   ): Promise<VerifiedPayment>
+  status(txnRef: TxnRef, options?): Promise<VerifiedPayment>
 }
 ```
 
-This is the smallest common abstraction. All gateway-specific details (signature generation, parameter names, API endpoints, data transformation) are encapsulated in each gateway implementation. Core provides types, utilities (constant-time compare, money formatting), and errors.
+See [gateway-contract.md](./gateway-contract.md) for the full, shipped surface.
 
-## Security Model
+### Data flow
 
-- **Callbacks are untrusted**: Never trust payload without verify()
-- **Only verify() creates VerifiedPayment**: Single point of trust creation
-- **Verify amount, order, signature**: All three must pass
-- **Server-side status verification**: When in doubt, verify via status API
-- **Constant-time signature comparison**: Prevent timing attacks
-- **Never log secrets**: Core/utils enforce this principle
+```
+                 createCheckout(order)
+Order ─────────────────────────────────►  Checkout + TxnRef
+                                              │  (render form / redirect)
+                                              ▼
+RawCallbackRequest ──parseCallback──► UnverifiedCallback
+                                              │
+                                     verify({ expected: order })
+                                              ▼
+                                       VerifiedPayment
+```
+
+The dashed, untrusted half is clearly separated: `parseCallback` only decodes
+and tags; `verify` is the only door to trust.
+
+## Money
+
+Money is an exact integer count of the minor unit, never a float:
+
+```ts
+interface Money {
+  readonly amount: bigint // scaled minor units: 100.00 NPR => 10000n
+  readonly currency: 'NPR'
+  readonly precision: number // decimal places, e.g. 2
+}
+```
+
+Construct with `moneyFromDecimal('100.00')` (decimal string) or
+`createMoney(10000n)` (minor units). Arithmetic (`addMoney`, `subtractMoney`,
+`multiplyMoney`) requires matching currency and precision; comparisons
+(`moneyEquals`, `compareMoney`) are cross-precision and same-currency. Serialize
+exactly with `moneyToJSON` / `moneyFromJSON`.
+
+## Order, Checkout, and TxnRef
+
+- `createOrder` validates an `Order` (id, positive amount, URLs, metadata) and
+  freezes it. Wrap untrusted input before checkout.
+- `Checkout` is either a `redirect` (`url`) or a `form_post` (`url` +
+  `formParams`). Gateways that sign a form return `form_post`.
+- `TxnRef` is `{ id, gateway }` and is the correlation key returned by
+  `createCheckout`. Persist `txnRef.id → order.id`.
+
+## Callbacks and verification
+
+`RawCallbackRequest` (query/body/headers) and `UnverifiedCallback` are untrusted
+data. `verify()` re-checks the gateway tag, the expected order, the amount, and
+the signature (constant time), and for some gateways performs a **server-side
+status confirmation**:
+
+| Gateway | Extra check inside `verify()`                                    |
+| ------- | ---------------------------------------------------------------- |
+| eSewa   | On `COMPLETE`, the status API must agree and `ref_id` must match |
+| Khalti  | The lookup API must report the payment as successful             |
+| Mock    | Ledger signature + amount + order                                |
+
+See [security.md](./security.md) for the trust model and [errors.md](./errors.md)
+for the failure codes.
+
+## Status
+
+All gateways map their raw states onto one set:
+
+```
+'pending' | 'completed' | 'failed' | 'canceled' | 'expired' | 'unknown'
+```
+
+`status()` can be called with a `TxnRef` (and, optionally, `expected`) for
+reconciliation when a callback is missing or delayed.
 
 ## Extensibility
 
-Adding ConnectIPS/Fonepay later means implementing PaymentGateway interface with their specific logic - no core changes needed. This matches "stateless" and "no gateway-specific logic in core".
+Adding a gateway means:
+
+1. implement `GatewayAdapter` using `core` types;
+2. add its method name to `PAYMENT_METHODS` in core;
+3. add fixtures and a driver so it runs under the shared conformance suite;
+4. document it under `docs/`.
+
+ConnectIPS and Fonepay are already reserved in the `PaymentMethod` union;
+their research notes live in [`docs/gateways/`](./gateways/).
+
+## Testing architecture
+
+- `@nepal-payments/mock` backs integration tests and local development.
+- The **conformance suite** (`tests/conformance`) runs one behavioral suite
+  against every gateway via thin drivers.
+- **JSON vectors** (`tests/vectors`) provide language-agnostic fixtures with
+  expected outputs.
+- **Framework tests** (`tests/framework`) exercise the example apps.
+
+See [testing.md](./testing.md).
+
+## See also
+
+- [Gateway contract](./gateway-contract.md)
+- [Security](./security.md)
+- [Getting started](./getting-started.md)
