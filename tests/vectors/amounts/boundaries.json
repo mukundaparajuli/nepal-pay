@@ -1,0 +1,54 @@
+{
+  "note": "amounts at the edges each gateway and the Money type accept",
+  "cases": [
+    {
+      "name": "smallest positive Money (one paisa)",
+      "paisa": "1",
+      "decimal": "0.01",
+      "mockValid": true,
+      "khaltiValid": false
+    },
+    {
+      "name": "Khalti minimum (Rs. 10)",
+      "paisa": "1000",
+      "decimal": "10.00",
+      "mockValid": true,
+      "khaltiValid": true
+    },
+    {
+      "name": "one paisa below the Khalti minimum",
+      "paisa": "999",
+      "decimal": "9.99",
+      "mockValid": true,
+      "khaltiValid": false
+    },
+    {
+      "name": "largest safe integer paisa",
+      "paisa": "9007199254740991",
+      "decimal": "90071992547409.91",
+      "mockValid": true,
+      "khaltiValid": true
+    },
+    {
+      "name": "first unsafe integer paisa",
+      "paisa": "9007199254740992",
+      "decimal": "90071992547409.92",
+      "mockValid": false,
+      "khaltiValid": false
+    }
+  ],
+  "precision": [
+    {
+      "precision": 0,
+      "mockValid": true
+    },
+    {
+      "precision": 2,
+      "mockValid": true
+    },
+    {
+      "precision": 3,
+      "mockValid": false
+    }
+  ]
+}

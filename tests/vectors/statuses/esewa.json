@@ -1,0 +1,14 @@
+{
+  "gateway": "esewa",
+  "cases": [
+    { "input": "COMPLETE", "expected": "completed" },
+    { "input": "PENDING", "expected": "pending" },
+    { "input": "CANCELED", "expected": "canceled" },
+    { "input": "NOT_FOUND", "expected": "unknown" },
+    { "input": "FULL_REFUND", "expected": "unknown" },
+    { "input": "PARTIAL_REFUND", "expected": "unknown" },
+    { "input": "garbage", "expected": "unknown" },
+    { "input": null, "expected": "unknown" },
+    { "input": 42, "expected": "unknown" }
+  ]
+}

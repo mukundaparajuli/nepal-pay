@@ -1,0 +1,16 @@
+{
+  "gateway": "khalti",
+  "cases": [
+    { "input": "Completed", "expected": "completed" },
+    { "input": "Pending", "expected": "pending" },
+    { "input": "Initiated", "expected": "pending" },
+    { "input": "User canceled", "expected": "canceled" },
+    { "input": "Expired", "expected": "expired" },
+    { "input": "Refunded", "expected": "unknown" },
+    { "input": "Partially Refunded", "expected": "unknown" },
+    { "input": "  Completed  ", "expected": "completed" },
+    { "input": "garbage", "expected": "unknown" },
+    { "input": null, "expected": "unknown" },
+    { "input": 42, "expected": "unknown" }
+  ]
+}

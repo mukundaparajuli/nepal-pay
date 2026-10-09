@@ -1,0 +1,41 @@
+{
+  "note": "NPR uses precision 2 (paisa). The SDK stores Money at its own precision; gateway amount units are paisa = units * 10^(2 - precision).",
+  "cases": [
+    {
+      "decimal": "0.01",
+      "precision": 2,
+      "units": "1",
+      "paisa": "1"
+    },
+    {
+      "decimal": "0.10",
+      "precision": 2,
+      "units": "10",
+      "paisa": "10"
+    },
+    {
+      "decimal": "230.00",
+      "precision": 2,
+      "units": "23000",
+      "paisa": "23000"
+    },
+    {
+      "decimal": "1234.5",
+      "precision": 1,
+      "units": "12345",
+      "paisa": "123450"
+    },
+    {
+      "decimal": "230",
+      "precision": 0,
+      "units": "230",
+      "paisa": "23000"
+    },
+    {
+      "decimal": "999999999999.99",
+      "precision": 2,
+      "units": "99999999999999",
+      "paisa": "99999999999999"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "secret": "vector-secret",
+  "cases": [
+    {
+      "name": "completed mock callback",
+      "message": "txn_id=mock_9f86d081884c7d65,order_id=ORD-MOCK-1,amount=23000,status=completed",
+      "values": {
+        "txn_id": "mock_9f86d081884c7d65",
+        "order_id": "ORD-MOCK-1",
+        "amount": "23000",
+        "status": "completed"
+      },
+      "expected_signature": "5c9d4a51aefbace46434ee722b93a9c08409c91f888b3b1f76116f20aa0e03c8"
+    },
+    {
+      "name": "tampered amount changes the signature",
+      "message": "txn_id=mock_9f86d081884c7d65,order_id=ORD-MOCK-1,amount=10000,status=completed",
+      "values": {
+        "txn_id": "mock_9f86d081884c7d65",
+        "order_id": "ORD-MOCK-1",
+        "amount": "10000",
+        "status": "completed"
+      },
+      "expected_signature": "eb7ef882d4aba15955d0afcf160422b2bfa4efa5209068bf84fa34a672b40871"
+    }
+  ],
+  "crossChecks": [
+    {
+      "name": "original signature does not verify over the tampered message",
+      "valid_signature": "5c9d4a51aefbace46434ee722b93a9c08409c91f888b3b1f76116f20aa0e03c8",
+      "tampered_message": "txn_id=mock_9f86d081884c7d65,order_id=ORD-MOCK-1,amount=10000,status=completed"
+    },
+    {
+      "name": "tampered signature does not verify over the original message",
+      "signature": "eb7ef882d4aba15955d0afcf160422b2bfa4efa5209068bf84fa34a672b40871",
+      "message": "txn_id=mock_9f86d081884c7d65,order_id=ORD-MOCK-1,amount=23000,status=completed"
+    }
+  ]
+}

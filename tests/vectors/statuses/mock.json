@@ -1,0 +1,14 @@
+{
+  "gateway": "mock",
+  "cases": [
+    { "input": "initiated", "expected": "pending" },
+    { "input": "pending", "expected": "pending" },
+    { "input": "completed", "expected": "completed" },
+    { "input": "failed", "expected": "failed" },
+    { "input": "canceled", "expected": "canceled" },
+    { "input": "expired", "expected": "expired" },
+    { "input": "garbage", "expected": "unknown" },
+    { "input": null, "expected": "unknown" },
+    { "input": 42, "expected": "unknown" }
+  ]
+}

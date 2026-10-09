@@ -1,0 +1,11 @@
+{
+  "note": "canonical unified status set fixed by the SDK contract; order is the declared PAYMENT_STATUSES order",
+  "statuses": [
+    "pending",
+    "completed",
+    "failed",
+    "canceled",
+    "expired",
+    "unknown"
+  ]
+}

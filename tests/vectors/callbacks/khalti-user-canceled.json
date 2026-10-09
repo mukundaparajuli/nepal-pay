@@ -1,0 +1,26 @@
+{
+  "gateway": "khalti",
+  "provenance": "copied from tests/fixtures/khalti/callback-user-canceled.json, docs-derived 'Canceled transaction callback'; amounts are paisa; transaction_id is empty on cancel",
+  "request": {
+    "method": "GET",
+    "query": {
+      "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+      "transaction_id": "",
+      "tidx": "",
+      "amount": "1000",
+      "total_amount": "1000",
+      "mobile": "",
+      "status": "User canceled",
+      "purchase_order_id": "test12",
+      "purchase_order_name": "test"
+    }
+  },
+  "expectedParse": {
+    "gateway": "khalti",
+    "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+    "status": "User canceled",
+    "totalAmount": "1000",
+    "transactionId": "",
+    "purchaseOrderId": "test12"
+  }
+}

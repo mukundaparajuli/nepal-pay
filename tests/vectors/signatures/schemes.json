@@ -1,0 +1,25 @@
+{
+  "esewa": {
+    "signed": true,
+    "algorithm": "HMAC-SHA256",
+    "encoding": "base64",
+    "messageFormat": "comma-joined name=value pairs in signed_field_names order",
+    "constantTime": true,
+    "verificationNote": "eSewa also requires the merchant secret to verify status via the status endpoint"
+  },
+  "khalti": {
+    "signed": false,
+    "algorithm": null,
+    "encoding": null,
+    "constantTime": null,
+    "verificationNote": "Khalti callbacks carry no signature; the pidx lookup API authenticated by the secret key is authoritative"
+  },
+  "mock": {
+    "signed": true,
+    "algorithm": "HMAC-SHA256",
+    "encoding": "hex",
+    "messageFormat": "txn_id=<txn>,order_id=<id>,amount=<paisa>,status=<status>",
+    "constantTime": true,
+    "verificationNote": "verifies the HMAC over the message fields, then confirms status and amount against the in-memory ledger"
+  }
+}

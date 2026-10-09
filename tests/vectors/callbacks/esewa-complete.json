@@ -1,0 +1,59 @@
+{
+  "gateway": "esewa",
+  "provenance": "field values from tests/fixtures/esewa/callback-complete.json; the signature was re-signed with the sandbox secret 8gBm/:&EnhH.1/q because the fixture's captured signature does not verify against EPAYTEST",
+  "request": {
+    "method": "POST",
+    "query": {
+      "data": "eyJ0cmFuc2FjdGlvbl9jb2RlIjoiMDAwNFQ1SSIsInN0YXR1cyI6IkNPTVBMRVRFIiwidG90YWxfYW1vdW50IjoiMjMwIiwidHJhbnNhY3Rpb25fdXVpZCI6IjEyLTYtMjMiLCJwcm9kdWN0X2NvZGUiOiJFUEFZVEVTVCIsInNpZ25lZF9maWVsZF9uYW1lcyI6InRyYW5zYWN0aW9uX2NvZGUsc3RhdHVzLHRvdGFsX2Ftb3VudCx0cmFuc2FjdGlvbl91dWlkLHByb2R1Y3RfY29kZSxzaWduZWRfZmllbGRfbmFtZXMiLCJzaWduYXR1cmUiOiJ2cmFzdEw0UnJiR2VlY040THcwNHZ1V2lqbmFYejZCWGFYYUUzODhZNEtNPSIsInN1Y2Nlc3NfdXJsIjoiaHR0cHM6Ly9lc2V3YS5jb20ubnAifQ=="
+    }
+  },
+  "payload": {
+    "transaction_code": "0004T5I",
+    "status": "COMPLETE",
+    "total_amount": "230",
+    "transaction_uuid": "12-6-23",
+    "product_code": "EPAYTEST",
+    "signed_field_names": "transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names",
+    "signature": "vrastL4RrbGeecN4Lw04vuWijnaXz6BXaXaE388Y4KM=",
+    "success_url": "https://esewa.com.np"
+  },
+  "expectedParse": {
+    "gateway": "esewa",
+    "orderId": "12-6-23",
+    "statusToken": "COMPLETE",
+    "signaturePresent": true,
+    "signedFieldNames": "transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names"
+  },
+  "malformed": [
+    {
+      "name": "missing data parameter",
+      "request": { "query": {} },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "no query or body at all",
+      "request": {},
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "invalid base64",
+      "request": { "query": { "data": "not base64!" } },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "data decodes to non-JSON",
+      "request": { "query": { "data": "cGxhaW4gdGV4dA==" } },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "data decodes to a JSON array",
+      "request": { "query": { "data": "WzEsMiwzXQ==" } },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "payload missing required fields",
+      "request": { "query": { "data": "eyJzdGF0dXMiOiJDT01QTEVURSJ9" } },
+      "error": "MALFORMED_CALLBACK"
+    }
+  ]
+}

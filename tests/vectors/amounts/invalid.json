@@ -1,0 +1,22 @@
+{
+  "moneyFromDecimal_precision2": [
+    { "input": "1.001", "error": "INVALID_PRECISION" },
+    { "input": "abc", "error": "INVALID_DECIMAL" },
+    { "input": "", "error": "INVALID_DECIMAL" },
+    { "input": "1.2.3", "error": "INVALID_DECIMAL" },
+    { "input": "1e3", "error": "INVALID_DECIMAL" },
+    { "input": "230.0", "error": null }
+  ],
+  "createMoney_number": [
+    { "input": 1.5, "error": "INVALID_AMOUNT" },
+    { "input": 9007199254740992, "error": "UNSAFE_AMOUNT" },
+    { "input": 23000, "error": null }
+  ],
+  "khaltiPaisaToMoney": [
+    { "input": 1.5, "error": "UNSAFE_AMOUNT" },
+    { "input": "10.00", "error": "INVALID_AMOUNT" },
+    { "input": null, "error": "INVALID_AMOUNT" },
+    { "input": 9007199254740992, "error": "UNSAFE_AMOUNT" },
+    { "input": 1000, "error": null }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "secret": "8gBm/:&EnhH.1/q",
+  "cases": [
+    {
+      "name": "callback payload fields from the eSewa sandbox docs",
+      "signed_field_names": "transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names",
+      "values": {
+        "transaction_code": "0004T5I",
+        "status": "COMPLETE",
+        "total_amount": "230",
+        "transaction_uuid": "12-6-23",
+        "product_code": "EPAYTEST",
+        "signed_field_names": "transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names"
+      },
+      "message": "transaction_code=0004T5I,status=COMPLETE,total_amount=230,transaction_uuid=12-6-23,product_code=EPAYTEST,signed_field_names=transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names",
+      "expected_signature": "vrastL4RrbGeecN4Lw04vuWijnaXz6BXaXaE388Y4KM="
+    },
+    {
+      "name": "checkout form fields",
+      "signed_field_names": "total_amount,transaction_uuid,product_code",
+      "values": {
+        "total_amount": "230.00",
+        "transaction_uuid": "12-6-23",
+        "product_code": "EPAYTEST"
+      },
+      "message": "total_amount=230.00,transaction_uuid=12-6-23,product_code=EPAYTEST",
+      "expected_signature": "D0LAwXaoWsEh0twVP89yrMkgtYbikUBViOR/JuQtGM0="
+    }
+  ]
+}

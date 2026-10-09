@@ -1,0 +1,49 @@
+{
+  "gateway": "khalti",
+  "provenance": "copied from tests/fixtures/khalti/callback-completed.json, which is docs-derived from https://docs.khalti.com/khalti-epayment 'Payment Success Callback - Sample Callback Request'; amounts are paisa",
+  "request": {
+    "method": "GET",
+    "query": {
+      "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+      "txnId": "4H7AhoXDJWg5WjrcPT9ixW",
+      "amount": "1000",
+      "total_amount": "1000",
+      "status": "Completed",
+      "mobile": "98XXXXX904",
+      "tidx": "4H7AhoXDJWg5WjrcPT9ixW",
+      "purchase_order_id": "test12",
+      "purchase_order_name": "test",
+      "transaction_id": "4H7AhoXDJWg5WjrcPT9ixW"
+    }
+  },
+  "expectedParse": {
+    "gateway": "khalti",
+    "pidx": "bZQLD9wRVWo4CdESSfuSsB",
+    "status": "Completed",
+    "totalAmount": "1000",
+    "transactionId": "4H7AhoXDJWg5WjrcPT9ixW",
+    "purchaseOrderId": "test12"
+  },
+  "malformed": [
+    {
+      "name": "missing pidx",
+      "request": { "query": { "status": "Completed" } },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "empty pidx",
+      "request": { "query": { "pidx": "" } },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "non-string pidx",
+      "request": { "query": { "pidx": 123 } },
+      "error": "MALFORMED_CALLBACK"
+    },
+    {
+      "name": "no query record",
+      "request": { "query": null },
+      "error": "MALFORMED_CALLBACK"
+    }
+  ]
+}
