@@ -21,6 +21,18 @@ export default [
     },
   },
   {
-    ignores: ['dist', 'build', 'node_modules', 'coverage'],
+    ignores: [
+      '**/dist/**',
+      '**/dist',
+      '**/build/**',
+      '**/build',
+      '**/node_modules/**',
+      '**/node_modules',
+      '**/coverage/**',
+      '**/coverage',
+      '**/.next/**',
+      '**/.next',
+      '**/next-env.d.ts',
+    ],
   },
 ]

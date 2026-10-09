@@ -11,6 +11,7 @@ import {
   SANDBOX_PRODUCT_CODE,
   captureError,
   order,
+  rejectingFetch,
   stubFetch,
   testGateway,
 } from './helpers.js'
@@ -113,7 +114,7 @@ describe('eSewa status', () => {
 
   it('rejects a txnRef tagged with another gateway', async () => {
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     await expectCode(
       () => gateway.status({ id: 'abc', gateway: 'khalti' }),
@@ -123,7 +124,7 @@ describe('eSewa status', () => {
 
   it('rejects a transaction id outside the allowed charset', async () => {
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     await expectCode(() => gateway.status(txn('bad id!')), 'INVALID_TXN_REF')
   })

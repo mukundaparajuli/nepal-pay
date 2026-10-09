@@ -13,6 +13,7 @@ import {
   callbackData,
   makeCompleteCallback,
   order,
+  rejectingFetch,
   serializeCallback,
   signCallbackPayload,
   stubFetch,
@@ -124,7 +125,7 @@ describe('eSewa verify', () => {
   it('rejects a signed callback for another order', async () => {
     const { data } = await makeCompleteCallback({ transaction_uuid: 'OTHER1' })
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     const callback = gateway.parseCallback({ query: { data } })
     await expectCode(
@@ -136,7 +137,7 @@ describe('eSewa verify', () => {
   it('rejects a signed callback with another product code', async () => {
     const { data } = await makeCompleteCallback({ product_code: 'OTHERCODE' })
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     const callback = gateway.parseCallback({ query: { data } })
     await expectCode(
@@ -234,7 +235,7 @@ describe('eSewa verify', () => {
     }
     const signed = await signCallbackPayload(input)
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     const callback = gateway.parseCallback({
       query: { data: callbackData(signed) },
@@ -253,7 +254,7 @@ describe('eSewa verify', () => {
     }
     const signed = await signCallbackPayload(input)
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     const callback = gateway.parseCallback({
       query: { data: callbackData(signed) },
@@ -368,7 +369,7 @@ describe('eSewa verify', () => {
   it('propagates a status endpoint transport failure', async () => {
     const { data } = await makeCompleteCallback()
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('connection reset')),
+      fetch: rejectingFetch('connection reset'),
     })
     const callback = gateway.parseCallback({ query: { data } })
     const error = await captureError(() =>

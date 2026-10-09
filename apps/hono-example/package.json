@@ -1,0 +1,20 @@
+{
+  "name": "@nepal-payments/hono-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.ts",
+    "build": "echo 'Hono example is source-only'",
+    "typecheck": "tsc --noEmit",
+    "start": "node src/server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.4",
+    "@nepal-payments/core": "workspace:^",
+    "hono": "^4.13.13"
+  },
+  "devDependencies": {
+    "@nepal-payments/mock": "workspace:^"
+  }
+}

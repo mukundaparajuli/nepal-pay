@@ -144,6 +144,13 @@ export function fetchReturning(body: unknown): typeof globalThis.fetch {
   return stubFetch(() => ({ body })).fetch
 }
 
+export function rejectingFetch(
+  message = 'network disabled'
+): typeof globalThis.fetch {
+  return (() =>
+    Promise.reject(new Error(message))) as unknown as typeof globalThis.fetch
+}
+
 export const SERVER_COMPLETE = {
   product_code: SANDBOX_PRODUCT_CODE,
   transaction_uuid: 'ORD001',

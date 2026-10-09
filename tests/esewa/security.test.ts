@@ -12,6 +12,7 @@ import {
   callbackData,
   makeCompleteCallback,
   order,
+  rejectingFetch,
   stubFetch,
   testGateway,
   type CallbackInput,
@@ -70,7 +71,7 @@ describe('eSewa security audit', () => {
     const { input } = await makeCompleteCallback()
     const tampered: CallbackInput = { ...input, status: 'PENDING' }
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     const callback = gateway.parseCallback({
       query: { data: callbackData(tampered) },
@@ -219,7 +220,7 @@ describe('eSewa security audit', () => {
 
   it('rejects a forged callback with no valid signature fields at all', async () => {
     const gateway = testGateway({
-      fetch: () => Promise.reject(new Error('no')),
+      fetch: rejectingFetch(),
     })
     const forged: UnverifiedCallback = {
       gateway: 'esewa',
