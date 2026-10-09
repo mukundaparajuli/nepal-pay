@@ -3,6 +3,7 @@ export const PAYMENT_METHODS = [
   'khalti',
   'connectips',
   'fonepay',
+  'mock',
 ] as const
 
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]

@@ -34,8 +34,10 @@ describe('public export surface', () => {
       'khalti',
       'connectips',
       'fonepay',
+      'mock',
     ])
     expect(core.isPaymentMethod('esewa')).toBe(true)
-    expect(core.isPaymentMethod('mock')).toBe(false)
+    expect(core.isPaymentMethod('mock')).toBe(true)
+    expect(core.isPaymentMethod('someone')).toBe(false)
   })
 })

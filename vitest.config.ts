@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig, configDefaults } from 'vitest/config'
 import path from 'path'
 
 export default defineConfig({
@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts', 'packages/**/*.test.ts'],
+    exclude: [...configDefaults.exclude, '**/*.bun.test.ts'],
   },
   resolve: {
     alias: [
@@ -24,6 +25,10 @@ export default defineConfig({
       {
         find: '@nepal-payments/khalti',
         replacement: path.resolve(__dirname, './packages/khalti/src'),
+      },
+      {
+        find: '@nepal-payments/mock',
+        replacement: path.resolve(__dirname, './packages/mock/src'),
       },
     ],
   },

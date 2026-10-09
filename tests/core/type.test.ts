@@ -33,8 +33,8 @@ function statusTypeChecks(): void {
 
 function badGatewayName(): unknown {
   const adapter = {
-    // @ts-expect-error 'mock' is not a supported payment method
-    name: 'mock',
+    // @ts-expect-error 'someone' is not a supported payment method
+    name: 'someone',
     createCheckout: async () => ({
       checkout: { type: 'redirect', url: 'https://pay.example/start' },
       txnRef: { id: 'TXN1', gateway: 'esewa' },
