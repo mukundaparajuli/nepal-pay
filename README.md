@@ -8,6 +8,9 @@ A stateless, framework-agnostic TypeScript SDK for Nepali payment gateways
 - No framework, database, or session dependency — hand it an `Order`, render the
   checkout, and verify the callback on your server.
 
+> **New here?** Start with the [tutorials](docs/tutorials/): run a full payment
+> with no credentials in five minutes, build an Express checkout, then go live.
+
 ## Packages
 
 | Package                      | Purpose                                                                          |
@@ -210,6 +213,7 @@ pnpm format:check   # verify formatting
 
 ## Documentation
 
+- [Tutorials](docs/tutorials/) — hands-on walkthroughs from zero to production
 - [Getting started](docs/getting-started.md) — concepts and the full flow
 - [eSewa](docs/esewa.md) · [Khalti](docs/khalti.md) · [connectIPS](docs/connectips.md) · [Fonepay](docs/fonepay.md)
 - [Reconciliation](docs/reconciliation.md) — polling status for missing callbacks

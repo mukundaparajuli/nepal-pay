@@ -3,6 +3,11 @@
 This guide walks through the full payment lifecycle with `@nepal-payments/*`.
 If you just want to see it work, start with the [README quickstart](../README.md).
 
+> **Prefer to learn by doing?** The [tutorials](./tutorials/) are hands-on,
+> step-by-step walkthroughs: run a payment with no credentials, build a real
+> Express checkout, then go live. This page is the concepts reference behind
+> them.
+
 ## Install
 
 ```bash
@@ -239,7 +244,8 @@ app.get('/payments/callback', async (req, res) => {
 
 Runnable equivalents live in [`apps/express-example`](../apps/express-example),
 [`apps/hono-example`](../apps/hono-example), and
-[`apps/next-example`](../apps/next-example).
+[`apps/next-example`](../apps/next-example). For a guided build of this server,
+see [Tutorial 2 — A checkout page with Express](./tutorials/02-express-checkout.md).
 
 ## Choosing a gateway
 
@@ -255,6 +261,10 @@ Protocol research for each gateway lives in [`docs/research/`](./research/).
 
 ## Next steps
 
+- Work through the [tutorials](./tutorials/): your
+  [first payment](./tutorials/01-first-payment.md), a
+  [checkout page with Express](./tutorials/02-express-checkout.md), and
+  [going live](./tutorials/03-go-live.md).
 - Wire up a real gateway: [eSewa](./esewa.md) · [Khalti](./khalti.md) ·
   [connectIPS](./connectips.md) · [Fonepay](./fonepay.md)
 - Test locally with the [mock gateway](./testing.md)
