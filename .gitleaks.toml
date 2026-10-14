@@ -1,0 +1,28 @@
+# Gitleaks configuration.
+#
+# Extends the built-in rule set (AWS, npm, private keys, generic API keys, ...)
+# and allows the intentional, well-known sample credentials that live in test
+# fixtures and documentation so CI does not flag them. Real credentials must
+# never be committed; see docs/security-review.md and docs/security.md.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional public sample/test credentials"
+paths = [
+  '''tests/fixtures/.*''',
+  '''tests/vectors/.*''',
+  '''tests/connectips/.*''',
+  '''tests/fonepay/.*''',
+  '''README\.md''',
+  '''docs/.*\.md''',
+  '''.*\.example''',
+]
+regexes = [
+  # eSewa documented sandbox test secret / merchant code
+  '''8gBm/:&EnhH\.1/q''',
+  '''EPAYTEST''',
+  # connectIPS fixture PFX password
+  '''connectips-test-password''',
+]
