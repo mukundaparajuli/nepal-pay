@@ -1,7 +1,7 @@
 # Nepal Payments
 
 A stateless, framework-agnostic TypeScript SDK for Nepali payment gateways
-(eSewa, Khalti — with ConnectIPS and Fonepay on the roadmap).
+(eSewa, Khalti, ConnectIPS, and Fonepay).
 
 - Money is exact (bigint minor units), never floating point.
 - Callbacks are untrusted; only `verify()` produces a sealed `VerifiedPayment`.
@@ -10,12 +10,14 @@ A stateless, framework-agnostic TypeScript SDK for Nepali payment gateways
 
 ## Packages
 
-| Package                  | Purpose                                                                          |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `@nepal-payments/core`   | Types, `Money`, `Order`, errors, gateway contract, `reconcile()`, `PaymentStore` |
-| `@nepal-payments/esewa`  | eSewa ePay V2 (form POST)                                                        |
-| `@nepal-payments/khalti` | Khalti ePayment (REST redirect)                                                  |
-| `@nepal-payments/mock`   | In-memory gateway for tests and local development                                |
+| Package                      | Purpose                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| `@nepal-payments/core`       | Types, `Money`, `Order`, errors, gateway contract, `reconcile()`, `PaymentStore` |
+| `@nepal-payments/esewa`      | eSewa ePay V2 (form POST)                                                        |
+| `@nepal-payments/khalti`     | Khalti ePayment (REST redirect)                                                  |
+| `@nepal-payments/connectips` | NCHL connectIPS (form POST + server-side validation)                             |
+| `@nepal-payments/fonepay`    | Fonepay (GET redirect + HMAC-SHA512 DV)                                          |
+| `@nepal-payments/mock`       | In-memory gateway for tests and local development                                |
 
 ## Quickstart (five minutes)
 
@@ -192,7 +194,7 @@ pnpm typecheck
 ## Documentation
 
 - [Getting started](docs/getting-started.md) — concepts and the full flow
-- [eSewa](docs/esewa.md) · [Khalti](docs/khalti.md)
+- [eSewa](docs/esewa.md) · [Khalti](docs/khalti.md) · [connectIPS](docs/connectips.md) · [Fonepay](docs/fonepay.md)
 - [Reconciliation](docs/reconciliation.md) — polling status for missing callbacks
 - [Persistence](docs/persistence.md) — the optional `PaymentStore`
 - [Testing](./docs/testing.md) — the mock gateway, conformance suite, vectors

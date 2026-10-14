@@ -243,17 +243,19 @@ Runnable equivalents live in [`apps/express-example`](../apps/express-example),
 
 ## Choosing a gateway
 
-| Gateway | Flow      | Docs                       |
-| ------- | --------- | -------------------------- |
-| eSewa   | form POST | [esewa.md](./esewa.md)     |
-| Khalti  | redirect  | [khalti.md](./khalti.md)   |
-| Mock    | redirect  | [testing.md](./testing.md) |
+| Gateway    | Flow      | Docs                             |
+| ---------- | --------- | -------------------------------- |
+| eSewa      | form POST | [esewa.md](./esewa.md)           |
+| Khalti     | redirect  | [khalti.md](./khalti.md)         |
+| connectIPS | form POST | [connectips.md](./connectips.md) |
+| Fonepay    | redirect  | [fonepay.md](./fonepay.md)       |
+| Mock       | redirect  | [testing.md](./testing.md)       |
 
-ConnectIPS and Fonepay are present in the `PaymentMethod` union but not yet
-implemented — see [`docs/gateways/`](./gateways/) for research notes.
+Protocol research for each gateway lives in [`docs/gateways/`](./gateways/).
 
 ## Next steps
 
-- Wire up a real gateway: [eSewa](./esewa.md) · [Khalti](./khalti.md)
+- Wire up a real gateway: [eSewa](./esewa.md) · [Khalti](./khalti.md) ·
+  [connectIPS](./connectips.md) · [Fonepay](./fonepay.md)
 - Test locally with the [mock gateway](./testing.md)
 - Understand the trust model: [security.md](./security.md)

@@ -154,8 +154,8 @@ Adding a gateway means:
 3. add fixtures and a driver so it runs under the shared conformance suite;
 4. document it under `docs/`.
 
-ConnectIPS and Fonepay are already reserved in the `PaymentMethod` union;
-their research notes live in [`docs/gateways/`](./gateways/).
+`eSewa`, `Khalti`, `connectIPS`, `Fonepay`, and `mock` are all implemented; their
+protocol research notes live in [`docs/gateways/`](./gateways/).
 
 ## Testing architecture
 

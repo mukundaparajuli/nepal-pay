@@ -42,7 +42,7 @@ change.
 | `INVALID_STATUS`   | Unknown status value or failed status transition    | Check gateway status spelling                        |
 | `INVALID_TXN_REF`  | Transaction reference id/shape is invalid           | Use the id returned by `createCheckout`              |
 | `INVALID_BASE64`   | Base64 payload could not be decoded                 | Ensure you forward the raw gateway payload unchanged |
-| `NOT_IMPLEMENTED`  | Reserved for gateways that are not built yet        | ConnectIPS/Fonepay are not implemented               |
+| `NOT_IMPLEMENTED`  | Reserved for unimplemented gateway features         | All bundled gateways are implemented                 |
 
 ### Reconciliation & persistence
 
