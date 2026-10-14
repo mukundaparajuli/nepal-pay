@@ -129,6 +129,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/fonepay:
+    dependencies:
+      '@nepal-payments/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/khalti:
     dependencies:
       '@nepal-payments/core':

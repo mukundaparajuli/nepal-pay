@@ -111,4 +111,12 @@ export interface GatewayConformanceDriver {
    * `'order'` (lookup carries the purchase order id) or `'txnRef'`.
    */
   readonly orderIdWithoutExpected: 'order' | 'txnRef'
+
+  /**
+   * Whether status() can recover an amount without an expected order. Defaults
+   * to `true`; set `false` for gateways whose lookup requires the amount (e.g.
+   * Fonepay's `verificationMerchant`), which disables the corresponding suite
+   * case.
+   */
+  readonly statusWithoutExpected?: boolean
 }

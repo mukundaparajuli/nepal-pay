@@ -251,19 +251,22 @@ export function runGatewayConformanceSuite(
         expect(payment.txnRef.id.length).toBeGreaterThan(0)
       })
 
-      it('reports a positive amount and status without an expected order', async () => {
-        const gateway = driver.createGateway()
-        const { txnRef } = await driver.paidCheckout(gateway)
-        const payment = await gateway.status(txnRef)
-        expect(payment.status).toBe('completed')
-        expect(payment.amount.amount).toBeGreaterThan(0n)
-        expect(payment.orderId.length).toBeGreaterThan(0)
-        const expectedOrderId =
-          driver.orderIdWithoutExpected === 'order'
-            ? driver.order.id
-            : txnRef.id
-        expect(payment.orderId).toBe(expectedOrderId)
-      })
+      it.skipIf(driver.statusWithoutExpected === false)(
+        'reports a positive amount and status without an expected order',
+        async () => {
+          const gateway = driver.createGateway()
+          const { txnRef } = await driver.paidCheckout(gateway)
+          const payment = await gateway.status(txnRef)
+          expect(payment.status).toBe('completed')
+          expect(payment.amount.amount).toBeGreaterThan(0n)
+          expect(payment.orderId.length).toBeGreaterThan(0)
+          const expectedOrderId =
+            driver.orderIdWithoutExpected === 'order'
+              ? driver.order.id
+              : txnRef.id
+          expect(payment.orderId).toBe(expectedOrderId)
+        }
+      )
 
       it('rejects a status lookup for another gateway', async () => {
         const gateway = driver.createGateway()
