@@ -57,5 +57,3 @@ export interface MockCallbackPayload {
   readonly signature: unknown
   readonly user?: unknown
 }
-
-export const MOCK_SIGNED_FIELD_NAMES = 'txn_id,order_id,amount,status' as const
