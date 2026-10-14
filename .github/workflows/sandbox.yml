@@ -1,0 +1,29 @@
+name: Sandbox integration
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sandbox
+  cancel-in-progress: false
+
+jobs:
+  sandbox:
+    name: eSewa + Khalti sandbox
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          node-version: '20'
+
+      # Credentials come from repository/environment secrets only. When they are
+      # absent (e.g. forks) the script logs a skip and exits 0. They are never
+      # written to a file in the workspace.
+      - name: Check sandbox APIs
+        run: node scripts/sandbox-check.mjs
+        env:
+          ESEWA_MERCHANT_CODE: ${{ secrets.ESEWA_SANDBOX_MERCHANT_CODE }}
+          KHALTI_SECRET_KEY: ${{ secrets.KHALTI_SANDBOX_SECRET_KEY }}

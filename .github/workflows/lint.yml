@@ -1,0 +1,26 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Format + ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          node-version: '20'
+      - name: Check formatting
+        run: pnpm format:check
+      - name: Build packages (typed lint resolves cross-package types)
+        run: pnpm build
+      - name: Lint
+        run: pnpm lint
