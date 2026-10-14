@@ -89,7 +89,7 @@
 
 | Aspect       | eSewa                  | Khalti                      | ConnectIPS           | Fonepay                  |
 | ------------ | ---------------------- | --------------------------- | -------------------- | ------------------------ |
-| Flow Type    | Form redirect          | API-based (REST) + redirect | API-based + redirect | Form redirect            |
+| Flow Type    | Form POST              | API-based (REST) + redirect | API-based + redirect | GET redirect             |
 | Auth         | Merchant code + secret | API key/secret              | App key/secret       | Merchant code + secret   |
 | Signature    | Varies (hash-based)    | HMAC-based                  | HMAC-based           | HMAC-SHA (DV field)      |
 | Verification | Callback verification  | Status API check            | Callback + API       | Callback DV verification |

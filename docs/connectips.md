@@ -4,7 +4,7 @@ Form-POST integration for the NCHL connectIPS merchant gateway via
 `@nepal-payments/connectips`.
 
 > Protocol research and endpoint verification live in
-> [gateways/connectips.md](./gateways/connectips.md). This page is the
+> [research/connectips.md](./research/connectips.md). This page is the
 > integration guide.
 
 ## Install
@@ -30,7 +30,7 @@ import { pfxToPkcs8Pem } from '@nepal-payments/connectips/pfx'
 
 const keyPem = pfxToPkcs8Pem(
   new Uint8Array(readFileSync('CREDITOR.pfx')),
-  process.env.NPAY_CONNECTIPS_PFX_PASSWORD!
+  process.env.NPAY_PFX_PASSWORD!
 ).privateKeyPem
 ```
 
@@ -170,4 +170,4 @@ returned by NCHL and uses the transaction id as the order id.
 
 - [Getting started](./getting-started.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
-- [Research: connectIPS](./gateways/connectips.md)
+- [Research: connectIPS](./research/connectips.md)

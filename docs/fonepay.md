@@ -4,7 +4,7 @@ GET-redirect integration for the Fonepay merchant gateway via
 `@nepal-payments/fonepay`.
 
 > Protocol research and DV field order live in
-> [gateways/fonepay.md](./gateways/fonepay.md). This page is the integration
+> [research/fonepay.md](./research/fonepay.md). This page is the integration
 > guide.
 
 ## Install
@@ -145,4 +145,4 @@ from a bare reference.
 
 - [Getting started](./getting-started.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
-- [Research: Fonepay](./gateways/fonepay.md)
+- [Research: Fonepay](./research/fonepay.md)

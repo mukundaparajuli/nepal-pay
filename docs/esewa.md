@@ -3,7 +3,7 @@
 Form-POST integration for eSewa ePay V2 via `@nepal-payments/esewa`.
 
 > Protocol research and endpoint verification live in
-> [gateways/esewa.md](./gateways/esewa.md). This page is the integration guide.
+> [research/esewa.md](./research/esewa.md). This page is the integration guide.
 
 ## Install
 
@@ -152,4 +152,4 @@ Pass `expected` to also verify amount and order.
 
 - [Getting started](./getting-started.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
-- [Research: eSewa](./gateways/esewa.md)
+- [Research: eSewa](./research/esewa.md)

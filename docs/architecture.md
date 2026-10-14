@@ -16,20 +16,24 @@
 
 ```
 packages/
-├── core/    types, Money, Order, errors, crypto utils, GatewayAdapter,
-│            reconcile() helper, PaymentStore contract
-├── esewa/   eSewa ePay V2 (form POST) implementation
-├── khalti/  Khalti ePayment (REST redirect) implementation
-└── mock/    in-memory gateway for tests and local development
+├── core/        types, Money, Order, errors, crypto utils, GatewayAdapter,
+│                reconcile() helper, PaymentStore contract
+├── esewa/       eSewa ePay V2 (form POST) implementation
+├── khalti/      Khalti ePayment (REST redirect) implementation
+├── connectips/  NCHL connectIPS (form POST + server-side validation)
+├── fonepay/     Fonepay (GET redirect + HMAC-SHA512 DV)
+├── mock/        in-memory gateway for tests and local development
+└── cli/         the `npay` command-line tool
 apps/
 ├── express-example/
 ├── hono-example/
 └── next-example/
 ```
 
-`core` has no external runtime dependencies. Each gateway depends on `core`
-only; the mock depends on `core`. Apps depend on `core` + one gateway (the
-examples use `mock`).
+`core` has no external runtime dependencies. Every gateway depends on `core`
+only, except `connectips`, which also uses `node-forge` to parse PKCS#12
+(`.pfx`) key files. The `cli` package wires the gateways together. Apps depend
+on `core` plus one gateway (the examples use `mock`).
 
 ## The gateway contract
 
@@ -101,11 +105,13 @@ data. `verify()` re-checks the gateway tag, the expected order, the amount, and
 the signature (constant time), and for some gateways performs a **server-side
 status confirmation**:
 
-| Gateway | Extra check inside `verify()`                                    |
-| ------- | ---------------------------------------------------------------- |
-| eSewa   | On `COMPLETE`, the status API must agree and `ref_id` must match |
-| Khalti  | The lookup API must report the payment as successful             |
-| Mock    | Ledger signature + amount + order                                |
+| Gateway    | Extra check inside `verify()`                                           |
+| ---------- | ----------------------------------------------------------------------- |
+| eSewa      | On `COMPLETE`, the status API must agree and `ref_id` must match        |
+| Khalti     | The lookup API must report the payment as successful                    |
+| connectIPS | The transaction-detail API must agree with the callback                 |
+| Fonepay    | The response DV is recomputed and compared (HMAC-SHA512, constant time) |
+| Mock       | Ledger signature + amount + order                                       |
 
 See [security.md](./security.md) for the trust model and [errors.md](./errors.md)
 for the failure codes.
@@ -155,7 +161,7 @@ Adding a gateway means:
 4. document it under `docs/`.
 
 `eSewa`, `Khalti`, `connectIPS`, `Fonepay`, and `mock` are all implemented; their
-protocol research notes live in [`docs/gateways/`](./gateways/).
+protocol research notes live in [`docs/research/`](./research/).
 
 ## Testing architecture
 

@@ -251,7 +251,7 @@ Runnable equivalents live in [`apps/express-example`](../apps/express-example),
 | Fonepay    | redirect  | [fonepay.md](./fonepay.md)       |
 | Mock       | redirect  | [testing.md](./testing.md)       |
 
-Protocol research for each gateway lives in [`docs/gateways/`](./gateways/).
+Protocol research for each gateway lives in [`docs/research/`](./research/).
 
 ## Next steps
 

@@ -3,7 +3,7 @@
 REST-redirect integration for Khalti ePayment via `@nepal-payments/khalti`.
 
 > Protocol research and endpoint verification live in
-> [gateways/khalti.md](./gateways/khalti.md).
+> [research/khalti.md](./research/khalti.md).
 
 ## Install
 
@@ -135,4 +135,4 @@ payment.status
 
 - [Getting started](./getting-started.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
-- [Research: Khalti](./gateways/khalti.md)
+- [Research: Khalti](./research/khalti.md)

@@ -18,6 +18,7 @@ A stateless, framework-agnostic TypeScript SDK for Nepali payment gateways
 | `@nepal-payments/connectips` | NCHL connectIPS (form POST + server-side validation)                             |
 | `@nepal-payments/fonepay`    | Fonepay (GET redirect + HMAC-SHA512 DV)                                          |
 | `@nepal-payments/mock`       | In-memory gateway for tests and local development                                |
+| `@nepal-payments/cli`        | The `npay` CLI: scaffold env files, smoke-test gateways, validate fixtures       |
 
 ## Quickstart (five minutes)
 
@@ -147,6 +148,21 @@ const payment = await gateway.verify(gateway.parseCallback(raw), {
 
 See the runnable examples in [`apps/`](apps): Express, Hono, and Next.js.
 
+## Command-line tool (`npay`)
+
+Install the CLI with `pnpm add -D @nepal-payments/cli` (or run it from the
+workspace with `pnpm --filter @nepal-payments/cli exec npay`).
+
+```bash
+npay init                       # write a .env.example for the gateways you use
+npay gateway test mock          # run an offline lifecycle smoke test
+npay gateway test esewa         # build a real adapter from env vars (no network)
+npay fixtures validate          # parse and check the bundled JSON vectors
+npay connectips import-pfx ./CREDITOR.pfx --out ./creditor.key
+```
+
+`npay init` writes **placeholders only** — it never invents or stores secrets.
+
 ## Reconcile a missing callback
 
 Callbacks can be lost or delayed. Ask the gateway what happened instead:
@@ -184,11 +200,12 @@ examples.
 
 ```bash
 pnpm install
-pnpm build        # build all packages
-pnpm test         # vitest (unit, gateway, conformance, framework)
-pnpm test:bun     # Bun runtime example test
+pnpm build          # build all packages
+pnpm test           # vitest (unit, gateway, conformance, framework, packaging)
+pnpm test:bun       # run the Bun runtime example test
 pnpm lint
 pnpm typecheck
+pnpm format:check   # verify formatting
 ```
 
 ## Documentation
@@ -199,7 +216,8 @@ pnpm typecheck
 - [Persistence](docs/persistence.md) — the optional `PaymentStore`
 - [Testing](./docs/testing.md) — the mock gateway, conformance suite, vectors
 - [Errors](./docs/errors.md) and [Troubleshooting](docs/troubleshooting.md)
-- [Security](docs/security.md) · [Architecture](docs/architecture.md)
+- [Security](docs/security.md) and the [security review](docs/security-review.md)
+- [Architecture](docs/architecture.md) · [Protocol research](docs/research/)
 
 ## License
 
