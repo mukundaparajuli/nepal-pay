@@ -4,10 +4,21 @@ export {
   hmacSha256,
   verifySha256,
   verifyHmacSha256,
+  hmacSha512,
+  verifyHmacSha512,
   safeBase64Encode,
   safeBase64Decode,
+  base64EncodeBytes,
+  base64DecodeBytes,
   isValidOrderId,
 } from './utils.js'
+export {
+  importPkcs8PrivateKey,
+  importSpkiPublicKey,
+  rsaSha256Sign,
+  rsaSha256Verify,
+} from './rsa.js'
+export type { RsaPrivateKey, RsaPublicKey } from './rsa.js'
 export * from './errors.js'
 export type { Currency, Money, MoneyJSON } from './money.js'
 export {

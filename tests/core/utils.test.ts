@@ -3,10 +3,14 @@ import {
   constantTimeCompare,
   sha256,
   hmacSha256,
+  hmacSha512,
   verifySha256,
   verifyHmacSha256,
+  verifyHmacSha512,
   safeBase64Encode,
   safeBase64Decode,
+  base64EncodeBytes,
+  base64DecodeBytes,
   isValidOrderId,
   PaymentError,
 } from '@nepal-payments/core'
@@ -69,6 +73,52 @@ describe('verifyHmacSha256', () => {
       false
     )
     expect(await verifyHmacSha256('payload', 'secret', '')).toBe(false)
+  })
+})
+
+describe('hmacSha512', () => {
+  it('matches RFC 4231 test case 1', async () => {
+    expect(await hmacSha512('Hi There', '\x0b'.repeat(20))).toBe(
+      '87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cdedaa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854'
+    )
+  })
+
+  it('matches RFC 4231 test case 2', async () => {
+    expect(
+      await hmacSha512('what do ya want for nothing?', 'Jefe')
+    ).toBe(
+      '164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737'
+    )
+  })
+})
+
+describe('verifyHmacSha512', () => {
+  it('accepts a correct signature regardless of case', async () => {
+    const signature = await hmacSha512('payload', 'secret')
+    expect(await verifyHmacSha512('payload', 'secret', signature)).toBe(true)
+    expect(
+      await verifyHmacSha512('payload', 'secret', signature.toUpperCase())
+    ).toBe(true)
+  })
+
+  it('rejects tampered payloads, secrets, and signatures', async () => {
+    const signature = await hmacSha512('payload', 'secret')
+    expect(await verifyHmacSha512('tampered', 'secret', signature)).toBe(false)
+    expect(await verifyHmacSha512('payload', 'other', signature)).toBe(false)
+    expect(await verifyHmacSha512('payload', 'secret', 'deadbeef')).toBe(false)
+    expect(await verifyHmacSha512('payload', 'secret', '')).toBe(false)
+  })
+})
+
+describe('binary base64 helpers', () => {
+  it('round-trips arbitrary bytes', () => {
+    const bytes = new Uint8Array([0, 1, 2, 253, 254, 255])
+    const encoded = base64EncodeBytes(bytes)
+    expect(base64DecodeBytes(encoded)).toEqual(bytes)
+  })
+
+  it('throws INVALID_BASE64 on malformed input', () => {
+    expect(() => base64DecodeBytes('!!!!')).toThrow(PaymentError)
   })
 })
 

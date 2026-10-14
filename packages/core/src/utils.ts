@@ -25,6 +25,24 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
+export function base64EncodeBytes(bytes: Uint8Array): string {
+  return bytesToBase64(bytes)
+}
+
+export function base64DecodeBytes(encoded: string): Uint8Array {
+  let binary: string
+  try {
+    binary = atob(encoded)
+  } catch {
+    throw new PaymentError('Invalid base64 input', 'INVALID_BASE64')
+  }
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
 export function constantTimeCompare(a: string, b: string): boolean {
   const bytesA = utf8Bytes(a)
   const bytesB = utf8Bytes(b)
@@ -70,6 +88,30 @@ export async function verifyHmacSha256(
   expectedSignature: string
 ): Promise<boolean> {
   const actual = await hmacSha256(data, secret)
+  return constantTimeCompare(actual, expectedSignature.toLowerCase())
+}
+
+export async function hmacSha512(
+  data: string,
+  secret: string
+): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    utf8Bytes(secret),
+    { name: 'HMAC', hash: 'SHA-512' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, utf8Bytes(data))
+  return toHex(new Uint8Array(signature))
+}
+
+export async function verifyHmacSha512(
+  data: string,
+  secret: string,
+  expectedSignature: string
+): Promise<boolean> {
+  const actual = await hmacSha512(data, secret)
   return constantTimeCompare(actual, expectedSignature.toLowerCase())
 }
 
