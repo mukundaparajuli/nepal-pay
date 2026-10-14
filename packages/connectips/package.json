@@ -1,0 +1,61 @@
+{
+  "name": "@nepal-payments/connectips",
+  "version": "0.1.0",
+  "description": "ConnectIPS (NCHL) payment gateway integration for Nepal",
+  "keywords": [
+    "nepal",
+    "payments",
+    "connectips",
+    "nchl",
+    "payment-gateway",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Mukunda Parajuli <mukundaparajuli13@gmail.com>",
+  "homepage": "https://github.com/mukundaparajuli/nepal-payments#readme",
+  "bugs": {
+    "url": "https://github.com/mukundaparajuli/nepal-payments/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mukundaparajuli/nepal-payments.git",
+    "directory": "packages/connectips"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./pfx": {
+      "types": "./dist/pfx.d.ts",
+      "import": "./dist/pfx.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nepal-payments/core": "workspace:*",
+    "node-forge": "^1.3.1"
+  },
+  "devDependencies": {
+    "@types/node-forge": "^1.3.11"
+  }
+}

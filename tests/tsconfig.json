@@ -6,6 +6,10 @@
     "paths": {
       "@nepal-payments/core": ["../packages/core/src"],
       "@nepal-payments/core/internal": ["../packages/core/src/internal.ts"],
+      "@nepal-payments/connectips": ["../packages/connectips/src"],
+      "@nepal-payments/connectips/pfx": ["../packages/connectips/src/pfx.ts"],
+      "@nepal-payments/fonepay": ["../packages/fonepay/src"],
+      "@nepal-payments/cli": ["../packages/cli/src"],
       "@nepal-payments/esewa": ["../packages/esewa/src"],
       "@nepal-payments/khalti": ["../packages/khalti/src"],
       "@nepal-payments/mock": ["../packages/mock/src"]

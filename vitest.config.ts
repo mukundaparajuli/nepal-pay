@@ -19,6 +19,22 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './packages/core/src'),
       },
       {
+        find: '@nepal-payments/connectips/pfx',
+        replacement: path.resolve(__dirname, './packages/connectips/src/pfx.ts'),
+      },
+      {
+        find: '@nepal-payments/connectips',
+        replacement: path.resolve(__dirname, './packages/connectips/src'),
+      },
+      {
+        find: '@nepal-payments/fonepay',
+        replacement: path.resolve(__dirname, './packages/fonepay/src'),
+      },
+      {
+        find: '@nepal-payments/cli',
+        replacement: path.resolve(__dirname, './packages/cli/src'),
+      },
+      {
         find: '@nepal-payments/esewa',
         replacement: path.resolve(__dirname, './packages/esewa/src'),
       },

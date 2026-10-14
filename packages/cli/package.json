@@ -1,0 +1,56 @@
+{
+  "name": "@nepal-payments/cli",
+  "version": "0.1.0",
+  "description": "Command-line tools for the Nepal payments SDK",
+  "keywords": [
+    "nepal",
+    "payments",
+    "cli",
+    "connectips",
+    "pfx",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Mukunda Parajuli <mukundaparajuli13@gmail.com>",
+  "homepage": "https://github.com/mukundaparajuli/nepal-payments#readme",
+  "bugs": {
+    "url": "https://github.com/mukundaparajuli/nepal-payments/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mukundaparajuli/nepal-payments.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "npay": "./dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nepal-payments/connectips": "workspace:*",
+    "@nepal-payments/core": "workspace:*"
+  }
+}
