@@ -2,7 +2,31 @@
   "name": "@nepal-payments/core",
   "version": "0.1.0",
   "description": "Core types and utilities for Nepal payment gateway SDK",
+  "keywords": [
+    "nepal",
+    "payments",
+    "esewa",
+    "khalti",
+    "sdk",
+    "money",
+    "payment-gateway"
+  ],
+  "license": "MIT",
+  "author": "Mukunda Parajuli <mukundaparajuli13@gmail.com>",
+  "homepage": "https://github.com/mukundaparajuli/nepal-payments#readme",
+  "bugs": {
+    "url": "https://github.com/mukundaparajuli/nepal-payments/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mukundaparajuli/nepal-payments.git",
+    "directory": "packages/core"
+  },
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -18,10 +42,14 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "dev": "tsc --project tsconfig.build.json --watch",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build",
     "clean": "rm -rf dist"
   }
 }

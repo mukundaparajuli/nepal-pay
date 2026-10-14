@@ -2,7 +2,30 @@
   "name": "@nepal-payments/mock",
   "version": "0.1.0",
   "description": "Local in-memory payment gateway for testing the unified SDK",
+  "keywords": [
+    "nepal",
+    "payments",
+    "mock",
+    "testing",
+    "payment-gateway",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Mukunda Parajuli <mukundaparajuli13@gmail.com>",
+  "homepage": "https://github.com/mukundaparajuli/nepal-payments#readme",
+  "bugs": {
+    "url": "https://github.com/mukundaparajuli/nepal-payments/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mukundaparajuli/nepal-payments.git",
+    "directory": "packages/mock"
+  },
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -14,10 +37,14 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "dev": "tsc --project tsconfig.build.json --watch",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build",
     "clean": "rm -rf dist"
   },
   "dependencies": {
