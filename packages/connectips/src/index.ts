@@ -78,10 +78,7 @@ export class ConnectIpsGateway implements GatewayAdapter {
 export * from './types.js'
 export { resolveConfig } from './config.js'
 export { buildConnectIpsCheckout } from './checkout.js'
-export type {
-  ConnectIpsCheckout,
-  ConnectIpsFormParams,
-} from './checkout.js'
+export type { ConnectIpsCheckout, ConnectIpsFormParams } from './checkout.js'
 export { parseConnectIpsCallback } from './callback.js'
 export {
   buildCheckoutTokenMessage,

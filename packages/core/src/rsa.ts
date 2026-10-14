@@ -17,8 +17,7 @@ const RSA_PARAMS: RsaHashedImportParams = {
 
 const utf8Encoder = new TextEncoder()
 
-const PEM_PATTERN =
-  /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/
+const PEM_PATTERN = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/
 
 export type RsaPrivateKey = CryptoKey
 export type RsaPublicKey = CryptoKey
@@ -32,7 +31,10 @@ function decodePem(
   expectedLabel: string
 ): Uint8Array<ArrayBuffer> {
   if (typeof pem !== 'string' || pem.length === 0) {
-    throw new PaymentError('RSA key must be a non-empty PEM string', 'INVALID_KEY')
+    throw new PaymentError(
+      'RSA key must be a non-empty PEM string',
+      'INVALID_KEY'
+    )
   }
   const match = PEM_PATTERN.exec(pem)
   if (match === null) {
@@ -65,7 +67,10 @@ function decodePem(
   try {
     bytes = new Uint8Array(base64DecodeBytes(body))
   } catch {
-    throw new PaymentError('RSA key PEM body is not valid base64', 'INVALID_KEY')
+    throw new PaymentError(
+      'RSA key PEM body is not valid base64',
+      'INVALID_KEY'
+    )
   }
   if (bytes.length === 0) {
     throw new PaymentError('RSA key PEM body is empty', 'INVALID_KEY')

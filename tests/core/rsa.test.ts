@@ -45,9 +45,7 @@ describe('importPkcs8PrivateKey / importSpkiPublicKey', () => {
     await expect(importPkcs8PrivateKey(pkcs1Pem)).rejects.toMatchObject({
       code: 'INVALID_KEY',
     })
-    await expect(importPkcs8PrivateKey(pkcs1Pem)).rejects.toThrow(
-      /PKCS#1/
-    )
+    await expect(importPkcs8PrivateKey(pkcs1Pem)).rejects.toThrow(/PKCS#1/)
   })
 
   it('rejects empty and malformed PEM', async () => {

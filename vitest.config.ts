@@ -20,7 +20,10 @@ export default defineConfig({
       },
       {
         find: '@nepal-payments/connectips/pfx',
-        replacement: path.resolve(__dirname, './packages/connectips/src/pfx.ts'),
+        replacement: path.resolve(
+          __dirname,
+          './packages/connectips/src/pfx.ts'
+        ),
       },
       {
         find: '@nepal-payments/connectips',
