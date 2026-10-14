@@ -51,6 +51,10 @@
   },
   "dependencies": {
     "@nepal-payments/connectips": "workspace:*",
-    "@nepal-payments/core": "workspace:*"
+    "@nepal-payments/core": "workspace:*",
+    "@nepal-payments/esewa": "workspace:*",
+    "@nepal-payments/fonepay": "workspace:*",
+    "@nepal-payments/khalti": "workspace:*",
+    "@nepal-payments/mock": "workspace:*"
   }
 }

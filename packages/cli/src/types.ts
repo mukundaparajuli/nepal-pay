@@ -1,3 +1,8 @@
+export interface DirEntry {
+  readonly name: string
+  readonly isDirectory: boolean
+}
+
 /**
  * The environment a CLI command runs in. Kept injectable so commands can be
  * unit-tested without spawning a process or touching the real filesystem.
@@ -14,5 +19,6 @@ export interface CliContext {
     mode: number
   ) => Promise<void>
   readonly fileExists: (path: string) => Promise<boolean>
+  readonly readDir: (path: string) => Promise<readonly DirEntry[]>
   readonly readStdin: () => Promise<string>
 }

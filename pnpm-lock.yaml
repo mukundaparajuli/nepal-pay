@@ -107,6 +107,18 @@ importers:
       '@nepal-payments/core':
         specifier: workspace:*
         version: link:../core
+      '@nepal-payments/esewa':
+        specifier: workspace:*
+        version: link:../esewa
+      '@nepal-payments/fonepay':
+        specifier: workspace:*
+        version: link:../fonepay
+      '@nepal-payments/khalti':
+        specifier: workspace:*
+        version: link:../khalti
+      '@nepal-payments/mock':
+        specifier: workspace:*
+        version: link:../mock
 
   packages/connectips:
     dependencies:

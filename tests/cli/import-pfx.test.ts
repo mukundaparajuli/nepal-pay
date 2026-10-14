@@ -1,53 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { importPkcs8PrivateKey, rsaSha256Sign } from '@nepal-payments/core'
 import { runCli } from '@nepal-payments/cli'
-import type { CliContext } from '@nepal-payments/cli'
 import { TEST_PFX_PASSWORD, loadTestPfx } from '../connectips/helpers.js'
-
-interface TestHarness {
-  readonly ctx: CliContext
-  readonly files: Map<string, string>
-  readonly stdout: string[]
-  readonly stderr: string[]
-  seedFile(path: string, contents: string): void
-  seedBytes(path: string, bytes: Uint8Array): void
-}
-
-function makeHarness(options?: {
-  env?: Record<string, string | undefined>
-  stdin?: string
-}): TestHarness {
-  const files = new Map<string, string>()
-  const binaryFiles = new Map<string, Uint8Array>()
-  const stdout: string[] = []
-  const stderr: string[] = []
-  const ctx: CliContext = {
-    cwd: '/work',
-    env: options?.env ?? {},
-    stdout: (message) => stdout.push(message),
-    stderr: (message) => stderr.push(message),
-    readFile: async (path) => {
-      const binary = binaryFiles.get(path)
-      if (binary !== undefined) return binary
-      const text = files.get(path)
-      if (text !== undefined) return new TextEncoder().encode(text)
-      throw new Error(`ENOENT: no such file ${path}`)
-    },
-    writeFile: async (path, contents) => {
-      files.set(path, contents)
-    },
-    fileExists: async (path) => files.has(path) || binaryFiles.has(path),
-    readStdin: async () => options?.stdin ?? '',
-  }
-  return {
-    ctx,
-    files,
-    stdout,
-    stderr,
-    seedFile: (path, contents) => files.set(path, contents),
-    seedBytes: (path, bytes) => binaryFiles.set(path, bytes),
-  }
-}
+import { makeHarness } from './harness.js'
 
 describe('npay connectips import-pfx', () => {
   it('converts a PFX to a PKCS#8 PEM using the env password', async () => {
