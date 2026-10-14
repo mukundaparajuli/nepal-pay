@@ -44,6 +44,14 @@ change.
 | `INVALID_BASE64`   | Base64 payload could not be decoded                 | Ensure you forward the raw gateway payload unchanged |
 | `NOT_IMPLEMENTED`  | Reserved for gateways that are not built yet        | ConnectIPS/Fonepay are not implemented               |
 
+### Reconciliation & persistence
+
+| Code                        | Meaning                                                 | Typical fix                                            |
+| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------ |
+| `INVALID_RECONCILE_OPTIONS` | A `reconcile()` option is out of range/malformed        | Use a positive `maxAttempts`, non-negative delays      |
+| `UNVERIFIED_PAYMENT`        | Tried to persist a payment that `verify()` did not seal | Only pass a `VerifiedPayment` to `paymentFromVerified` |
+| `INVALID_IDEMPOTENCY_KEY`   | An idempotency key was empty or not a string            | Pass a stable non-empty key (e.g. the order id)        |
+
 ### Money
 
 | Code                 | Meaning                                    |

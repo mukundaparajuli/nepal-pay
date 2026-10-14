@@ -16,7 +16,8 @@
 
 ```
 packages/
-├── core/    types, Money, Order, errors, crypto utils, GatewayAdapter
+├── core/    types, Money, Order, errors, crypto utils, GatewayAdapter,
+│            reconcile() helper, PaymentStore contract
 ├── esewa/   eSewa ePay V2 (form POST) implementation
 ├── khalti/  Khalti ePayment (REST redirect) implementation
 └── mock/    in-memory gateway for tests and local development
@@ -119,6 +120,30 @@ All gateways map their raw states onto one set:
 
 `status()` can be called with a `TxnRef` (and, optionally, `expected`) for
 reconciliation when a callback is missing or delayed.
+
+## Reconciliation
+
+Callbacks can be lost or delayed, so `core` ships a bounded `reconcile()` helper
+on top of `status()`:
+
+```
+pending payment → status lookup → retry/backoff → final state
+```
+
+`reconcile(gateway, { order, txnRef }, options)` polls `status()`, retrying
+while the payment is non-terminal (`pending`/`unknown`) with exponential
+backoff, and stops on a terminal status (`completed`/`failed`/`canceled`/
+`expired`), on `timeoutMs`, on `expiresAt`, or when `maxAttempts` is reached.
+It **does not schedule itself** — run it from your own cron/queue. Scheduling
+stays outside the library. See [reconciliation.md](./reconciliation.md).
+
+## Optional persistence
+
+`core` defines a `PaymentStore` interface (`getPayment`, `savePayment`,
+`acquireIdempotencyKey`) and an in-memory implementation for tests. It does not
+depend on a database; you implement the interface against your own store. The
+interface exists so reconciliation and idempotent fulfillment have a home, not
+because the SDK requires persistence. See [persistence.md](./persistence.md).
 
 ## Extensibility
 

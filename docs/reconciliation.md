@@ -1,0 +1,149 @@
+# Reconciliation
+
+A callback can be lost, delayed, or arrive after your server already responded.
+A customer can also close the browser before the gateway redirects them back.
+Reconciliation is how you find out what actually happened: ask the gateway for
+the transaction status instead of waiting for a callback.
+
+```
+pending payment
+      │
+      ▼
+ status lookup  ──►  terminal?  ──►  final state
+      │  ▲
+      │  └── retry / backoff
+      ▼
+ timeout · expiry · attempts exhausted ──► UNKNOWN / pending
+```
+
+The SDK gives you the two building blocks, and leaves scheduling to you:
+
+1. `status(txnRef, options?)` on every gateway — one status lookup.
+2. `reconcile(gateway, payment, options?)` — a bounded lookup with retries.
+
+> **Your scheduler stays yours.** `reconcile()` performs one bounded run and
+> returns. It never starts timers, cron jobs, or background work. Run it from
+> your own queue, cron, or "my order is stuck" button.
+
+## `status()`
+
+Every `GatewayAdapter` exposes `status()`:
+
+```ts
+status(txnRef: TxnRef, options?: StatusOptions): Promise<VerifiedPayment>
+```
+
+It maps the gateway's native state onto the unified set
+(`pending | completed | failed | canceled | expired | unknown`) and seals the
+result as a `VerifiedPayment`. Pass `expected` to also enforce the order id and
+amount:
+
+```ts
+const payment = await gateway.status(txnRef, { expected: order })
+```
+
+On a definitive failure it throws `NepalPaymentsError` — for example
+`UNKNOWN_TRANSACTION` when the gateway has no record, `GATEWAY_MISMATCH` if the
+`txnRef` belongs to another gateway, or `INVALID_TXN_REF` for a malformed id. A
+transport failure (timeout, malformed JSON) throws a `VerificationError`.
+
+## `reconcile()`
+
+```ts
+import { reconcile } from '@nepal-payments/core'
+
+const result = await reconcile(
+  gateway,
+  { order, txnRef }, // the pending payment
+  { maxAttempts: 5, backoffMs: 250, timeoutMs: 10_000 }
+)
+
+if (result.resolved) {
+  // result.status is completed | failed | canceled | expired
+} else {
+  // still pending or unknown — try again later
+}
+```
+
+### Terminal vs non-terminal
+
+A run stops as soon as it observes a **terminal** status:
+
+| Terminal (stop, `resolved: true`)            | Non-terminal (retry) |
+| -------------------------------------------- | -------------------- |
+| `completed`, `failed`, `canceled`, `expired` | `pending`, `unknown` |
+
+`TERMINAL_PAYMENT_STATUSES` and `isTerminalPaymentStatus(value)` are exported if
+you want to branch on this yourself. `unknown` is deliberately non-terminal: the
+gateway has not made up its mind yet, so a later lookup may still resolve it.
+
+### Options
+
+| Option         | Default      | Meaning                                                |
+| -------------- | ------------ | ------------------------------------------------------ |
+| `maxAttempts`  | `3`          | Total number of `status()` calls, including the first  |
+| `backoffMs`    | `250`        | Base delay; doubles each attempt                       |
+| `maxBackoffMs` | `5000`       | Upper bound for the exponential backoff                |
+| `timeoutMs`    | `10000`      | Total time budget for the run                          |
+| `expiresAt`    | —            | `Date`; stop retrying once reached (e.g. order expiry) |
+| `retryOnError` | `true`       | Retry when `status()` throws transiently               |
+| `now`          | `Date.now`   | Injectable clock (tests)                               |
+| `sleep`        | `setTimeout` | Injectable sleep (tests)                               |
+
+Backoff is exponential: with `backoffMs: 250` the waits are 250ms, 500ms,
+1000ms… capped at `maxBackoffMs`. The run always makes at least one lookup.
+
+### Result
+
+```ts
+interface ReconcileResult {
+  readonly payment: VerifiedPayment // last payment observed
+  readonly status: PaymentStatus
+  readonly attempts: number
+  readonly resolved: boolean // true only for a terminal status
+  readonly reason: 'terminal' | 'exhausted' | 'timeout' | 'expired'
+}
+```
+
+`reason` explains why the run stopped:
+
+- `terminal` — reached a terminal status (`resolved: true`)
+- `exhausted` — hit `maxAttempts` while still pending/unknown
+- `timeout` — exceeded `timeoutMs`
+- `expired` — reached `expiresAt`
+
+If **every** attempt throws and none returns a payment, `reconcile()` rethrows
+the last error instead of returning a result. If at least one attempt returned a
+payment and a later one errors, the last known payment is returned.
+
+## Scheduling it yourself
+
+`reconcile()` is a normal async function. Drive it from whatever you already
+run:
+
+```ts
+// A queue worker, cron job, or admin endpoint — not inside the library.
+async function reconcileStuckOrders() {
+  const pending = await store.listPending()
+  for (const item of pending) {
+    const result = await reconcile(
+      gatewayFor(item.txnRef.gateway),
+      { order: item.order, txnRef: item.txnRef },
+      { maxAttempts: 4, backoffMs: 500, expiresAt: item.expiresAt }
+    )
+    if (result.resolved) {
+      await store.savePayment(paymentFromVerified(result.payment))
+    }
+  }
+}
+```
+
+Keep the run bounded and short; if a payment is still pending, let the next
+scheduled run pick it up. See [persistence.md](./persistence.md) for a
+`PaymentStore` you can implement to track pending payments.
+
+## See also
+
+- [Persistence](./persistence.md) — storing payments and idempotency keys
+- [Gateway contract](./gateway-contract.md) — `status()` and the full surface
+- [Errors](./errors.md) — failure codes

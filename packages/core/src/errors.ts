@@ -19,6 +19,9 @@ export type PaymentErrorCode =
   | 'AMOUNT_MISMATCH'
   | 'SIGNATURE_MISMATCH'
   | 'UNKNOWN_TRANSACTION'
+  | 'UNVERIFIED_PAYMENT'
+  | 'INVALID_RECONCILE_OPTIONS'
+  | 'INVALID_IDEMPOTENCY_KEY'
   | 'NOT_IMPLEMENTED'
 
 export class NepalPaymentsError extends Error {

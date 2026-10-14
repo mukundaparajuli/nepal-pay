@@ -157,6 +157,33 @@ if (payment.status === 'completed') {
 }
 ```
 
+### Reconcile (when no callback arrives)
+
+If a callback is lost or delayed, poll the gateway instead of waiting:
+
+```ts
+import { reconcile } from '@nepal-payments/core'
+
+const result = await reconcile(
+  gateway,
+  { order, txnRef },
+  {
+    maxAttempts: 5,
+    backoffMs: 250,
+    timeoutMs: 10_000,
+  }
+)
+if (result.resolved) await fulfill(result.payment)
+```
+
+`reconcile()` is a single bounded run — schedule it from your own cron or queue.
+See [reconciliation.md](./reconciliation.md).
+
+### Persist (optional)
+
+To track pending payments and guard against duplicate callbacks, implement the
+`PaymentStore` interface. See [persistence.md](./persistence.md).
+
 ## A complete Express handler
 
 ```ts

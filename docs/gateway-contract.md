@@ -169,6 +169,90 @@ export interface CheckoutResult {
 The four methods are required on every adapter. `verify()` MUST check the
 gateway tag, the order, the amount, and the signature before sealing.
 
+## Reconciliation
+
+`core` adds a bounded helper over `status()`:
+
+```ts
+export const TERMINAL_PAYMENT_STATUSES: readonly [
+  'completed',
+  'failed',
+  'canceled',
+  'expired',
+]
+
+export interface PendingPayment {
+  readonly order: Order
+  readonly txnRef: TxnRef
+}
+
+export interface ReconcileOptions {
+  readonly maxAttempts?: number // default 3
+  readonly backoffMs?: number // default 250 (exponential)
+  readonly maxBackoffMs?: number // default 5000
+  readonly timeoutMs?: number // default 10000
+  readonly expiresAt?: Date
+  readonly now?: () => number
+  readonly sleep?: (ms: number) => Promise<void>
+  readonly retryOnError?: boolean // default true
+}
+
+export interface ReconcileResult {
+  readonly payment: VerifiedPayment
+  readonly status: PaymentStatus
+  readonly attempts: number
+  readonly resolved: boolean
+  readonly reason: 'terminal' | 'exhausted' | 'timeout' | 'expired'
+}
+
+export function isTerminalPaymentStatus(
+  value: unknown
+): value is TerminalPaymentStatus
+
+export function reconcile(
+  gateway: GatewayAdapter,
+  payment: PendingPayment,
+  options?: ReconcileOptions
+): Promise<ReconcileResult>
+```
+
+`reconcile()` performs one bounded run; it does not schedule itself. See
+[reconciliation.md](./reconciliation.md).
+
+## Persistence
+
+Optional, database-agnostic persistence contract:
+
+```ts
+export interface Payment {
+  readonly orderId: string
+  readonly amount: Money
+  readonly status: PaymentStatus
+  readonly txnRef: TxnRef
+  readonly verifiedAt: Date
+  readonly updatedAt: Date
+  readonly raw?: Record<string, unknown>
+}
+
+export interface PaymentStore {
+  getPayment(orderId: string): Promise<Payment | null>
+  savePayment(payment: Payment): Promise<void>
+  acquireIdempotencyKey(key: string): Promise<boolean>
+}
+
+export function paymentFromVerified(
+  payment: VerifiedPayment,
+  now?: Date
+): Payment
+
+export class InMemoryPaymentStore implements PaymentStore
+export function createInMemoryPaymentStore(): InMemoryPaymentStore
+```
+
+`paymentFromVerified()` rejects unsealed input with `UNVERIFIED_PAYMENT`. The
+in-memory store is for tests; implement `PaymentStore` against your own
+database. See [persistence.md](./persistence.md).
+
 ## Errors
 
 Every gateway error extends `NepalPaymentsError` with an optional machine

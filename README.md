@@ -10,12 +10,12 @@ A stateless, framework-agnostic TypeScript SDK for Nepali payment gateways
 
 ## Packages
 
-| Package                  | Purpose                                           |
-| ------------------------ | ------------------------------------------------- |
-| `@nepal-payments/core`   | Types, `Money`, `Order`, errors, gateway contract |
-| `@nepal-payments/esewa`  | eSewa ePay V2 (form POST)                         |
-| `@nepal-payments/khalti` | Khalti ePayment (REST redirect)                   |
-| `@nepal-payments/mock`   | In-memory gateway for tests and local development |
+| Package                  | Purpose                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `@nepal-payments/core`   | Types, `Money`, `Order`, errors, gateway contract, `reconcile()`, `PaymentStore` |
+| `@nepal-payments/esewa`  | eSewa ePay V2 (form POST)                                                        |
+| `@nepal-payments/khalti` | Khalti ePayment (REST redirect)                                                  |
+| `@nepal-payments/mock`   | In-memory gateway for tests and local development                                |
 
 ## Quickstart (five minutes)
 
@@ -145,6 +145,39 @@ const payment = await gateway.verify(gateway.parseCallback(raw), {
 
 See the runnable examples in [`apps/`](apps): Express, Hono, and Next.js.
 
+## Reconcile a missing callback
+
+Callbacks can be lost or delayed. Ask the gateway what happened instead:
+
+```ts
+import { reconcile } from '@nepal-payments/core'
+
+const result = await reconcile(
+  gateway,
+  { order, txnRef },
+  {
+    maxAttempts: 5,
+    backoffMs: 250,
+    timeoutMs: 10_000,
+  }
+)
+
+result.resolved // true once completed/failed/canceled/expired
+result.status // 'pending' | 'unknown' | terminal
+```
+
+`reconcile()` retries while a payment is non-terminal and stops on a terminal
+status, timeout, expiry, or attempt limit. It performs one bounded run and
+**does not schedule itself** — drive it from your own queue or cron. See
+[reconciliation.md](docs/reconciliation.md).
+
+## Optional persistence
+
+The SDK ships no database. Persist payments and idempotency keys by
+implementing the `PaymentStore` interface (an in-memory version is included for
+tests). See [persistence.md](docs/persistence.md) for Postgres and Redis
+examples.
+
 ## Development
 
 ```bash
@@ -160,6 +193,8 @@ pnpm typecheck
 
 - [Getting started](docs/getting-started.md) — concepts and the full flow
 - [eSewa](docs/esewa.md) · [Khalti](docs/khalti.md)
+- [Reconciliation](docs/reconciliation.md) — polling status for missing callbacks
+- [Persistence](docs/persistence.md) — the optional `PaymentStore`
 - [Testing](./docs/testing.md) — the mock gateway, conformance suite, vectors
 - [Errors](./docs/errors.md) and [Troubleshooting](docs/troubleshooting.md)
 - [Security](docs/security.md) · [Architecture](docs/architecture.md)
