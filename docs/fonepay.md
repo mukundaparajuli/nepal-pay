@@ -36,7 +36,7 @@ import { createFonepay } from '@nepal-payments/fonepay'
 
 const gateway = createFonepay({
   merchantCode: process.env.FONEPAY_PID!,
-  secretKey: process.env.FONEPAY_SECRET!,
+  secretKey: process.env.FONEPAY_SECRET_KEY!,
   environment: 'sandbox', // 'sandbox' | 'production'
   returnUrl: 'https://shop.example/payments/fonepay/return',
   remarks1: 'Order payment', // optional default R1
@@ -143,6 +143,6 @@ from a bare reference.
 
 ## See also
 
-- [Getting started](./getting-started.md)
+- [Overview & quickstart](../README.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
 - [Research: Fonepay](./research/fonepay.md)

@@ -245,6 +245,6 @@ Everything else is derived. That is what makes the SDK stateless.
 
 - [Tutorial 2 — A checkout page with Express →](./02-express-checkout.md) puts
   this into a real HTTP server with routes and idempotent fulfillment.
-- Want the concepts without the steps? Read
-  [getting-started.md](../getting-started.md).
+- Want the concepts without the steps? Read the
+  [overview and quickstart](../../README.md).
 - Ready for real money? Jump to [Tutorial 3 — Going live](./03-go-live.md).

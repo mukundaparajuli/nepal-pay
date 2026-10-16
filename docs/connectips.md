@@ -168,6 +168,6 @@ returned by NCHL and uses the transaction id as the order id.
 
 ## See also
 
-- [Getting started](./getting-started.md)
+- [Overview & quickstart](../README.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
 - [Research: connectIPS](./research/connectips.md)

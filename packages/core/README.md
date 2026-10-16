@@ -28,8 +28,7 @@ Amounts are exact decimal strings via `moneyFromDecimal` — never pass a float.
 
 ## Links
 
-- [Full quickstart](https://github.com/mukundaparajuli/nepal-payments#readme)
-- [Architecture](https://github.com/mukundaparajuli/nepal-payments/blob/main/docs/architecture.md)
+- [Full quickstart and API](https://github.com/mukundaparajuli/nepal-payments#readme)
 - [Security](https://github.com/mukundaparajuli/nepal-payments/blob/main/docs/security.md)
 
 ## License

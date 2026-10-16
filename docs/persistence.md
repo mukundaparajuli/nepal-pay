@@ -241,4 +241,4 @@ async function fulfill(gateway: GatewayAdapter, payment: VerifiedPayment) {
 ## See also
 
 - [Reconciliation](./reconciliation.md) — polling `status()` for missing callbacks
-- [Getting started](./getting-started.md) — the full lifecycle
+- [Overview & quickstart](../README.md) — the full lifecycle

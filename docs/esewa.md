@@ -150,6 +150,6 @@ Pass `expected` to also verify amount and order.
 
 ## See also
 
-- [Getting started](./getting-started.md)
+- [Overview & quickstart](../README.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
 - [Research: eSewa](./research/esewa.md)

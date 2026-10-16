@@ -271,4 +271,4 @@ statuses map onto the unified `PaymentStatus`.
 - [Security](../security.md) — the trust model and the adversarial review.
 - [Errors](../errors.md) and [Troubleshooting](../troubleshooting.md) — when
   something misbehaves in production.
-- [Architecture](../architecture.md) — how the packages fit together.
+- [Project overview](../../README.md) — how the packages fit together.

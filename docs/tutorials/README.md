@@ -26,7 +26,7 @@ what to type, what you should see, and why. Do them in order.
 
 ## Where to go after
 
-- [Getting started](../getting-started.md) — the concepts reference behind these
+- [Project overview](../../README.md) — the concepts reference behind these
   tutorials.
 - [Per-gateway guides](../esewa.md) — eSewa, Khalti, connectIPS, Fonepay.
 - [Security](../security.md) — the trust model in depth.

@@ -133,6 +133,6 @@ payment.status
 
 ## See also
 
-- [Getting started](./getting-started.md)
+- [Overview & quickstart](../README.md)
 - [Errors](./errors.md) · [Troubleshooting](./troubleshooting.md)
 - [Research: Khalti](./research/khalti.md)
