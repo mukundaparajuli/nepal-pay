@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['18', '20', '22']
+        node-version: ['20', '22']
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -36,5 +36,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - name: Build packages for Bun resolution
+        run: pnpm build
       - name: Run the Bun framework test
         run: pnpm test:bun

@@ -51,8 +51,7 @@ Every gateway depends only on `@nepal-payments/core` (connectIPS also uses
 
 ## Requirements
 
-- **Node.js 18+** (20+ recommended). Also runs on Bun and in edge/Next.js server
-  runtimes.
+- **Node.js 20+**. Also runs on Bun and in edge/Next.js server runtimes.
 - The repo uses `pnpm`; consumers may use npm, yarn, or bun.
 
 ## Install
