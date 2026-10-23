@@ -1,23 +1,16 @@
 # Nepal Payments
 
 A stateless, framework-agnostic TypeScript SDK for Nepali payment gateways —
-**eSewa**, **Khalti**, **connectIPS**, and **Fonepay** — with a mock gateway for
+**eSewa**, **Khalti**, **connectIPS**, and **Fonepay** — plus a mock gateway for
 tests and local development.
 
 - **Exact money.** Amounts are `bigint` minor units (`100.00 NPR` → `10000n`),
   never floating point.
 - **Verify before trust.** Callbacks are untrusted; only `verify()` produces a
   sealed `VerifiedPayment`.
-- **Stateless & dependency-free.** No framework, database, or session coupling.
-  Hand it an `Order`, render the checkout, and verify the callback server-side.
-- **One contract, every gateway.** The same lifecycle drives all four gateways,
-  so switching providers is a config change.
-
-> **New here?** The [tutorials](docs/tutorials/) run a full payment with no
-> credentials in five minutes, then build a real Express checkout and take it
-> live. This README is the complete reference.
-
----
+- **Stateless and dependency-free.** No framework, database, or session coupling.
+- **One contract, every gateway.** The same lifecycle drives all gateways, so
+  switching providers is a configuration change.
 
 ## Table of contents
 
@@ -32,16 +25,13 @@ tests and local development.
   - [connectIPS](#connectips)
   - [Fonepay](#fonepay)
   - [Mock](#mock)
-- [Command-line tool (`npay`)](#command-line-tool-npay)
-- [Reconciliation](#reconciliation)
-- [Persistence](#persistence)
+- [CLI](#cli)
 - [Testing](#testing)
 - [Security](#security)
 - [Errors](#errors)
 - [Architecture](#architecture)
 - [Development](#development)
 - [Examples](#examples)
-- [Documentation](#documentation)
 - [License](#license)
 
 ## Packages
@@ -54,16 +44,16 @@ tests and local development.
 | `@nepal-payments/connectips` | form POST + server validation | NCHL connectIPS                                                                  |
 | `@nepal-payments/fonepay`    | GET redirect + HMAC-SHA512 DV | Fonepay                                                                          |
 | `@nepal-payments/mock`       | redirect                      | In-memory gateway for tests and local development                                |
-| `@nepal-payments/cli`        | —                             | The `npay` CLI: scaffold env files, smoke-test gateways, validate fixtures       |
+| `@nepal-payments/cli`        | —                             | The `npay` CLI: env scaffolding, offline smoke tests, fixture validation         |
 
 Every gateway depends only on `@nepal-payments/core` (connectIPS also uses
-`node-forge` to read `CREDITOR.pfx`). `core` has **no runtime dependencies**.
+`node-forge` to read `CREDITOR.pfx`). `core` has no runtime dependencies.
 
 ## Requirements
 
-- **Node.js 18+** (Node 20+ recommended). Also runs on Bun and in edge/Next.js
-  server runtimes.
-- `pnpm` is used in this repo; consumers can use npm, yarn, or bun.
+- **Node.js 18+** (20+ recommended). Also runs on Bun and in edge/Next.js server
+  runtimes.
+- The repo uses `pnpm`; consumers may use npm, yarn, or bun.
 
 ## Install
 
@@ -74,8 +64,7 @@ pnpm add @nepal-payments/core @nepal-payments/esewa
 
 ## Quickstart
 
-The whole lifecycle, end to end. This example uses eSewa; every gateway follows
-the same shape.
+The whole lifecycle, using eSewa. Every gateway follows the same shape:
 
 ```
 install → create gateway → create order → create checkout
@@ -122,56 +111,47 @@ such as `INVALID_ORDER_ID` or `INVALID_URL`.
 const { checkout, txnRef } = await gateway.createCheckout(order)
 // checkout.type === 'form_post' for eSewa
 // checkout.url        -> eSewa endpoint
-// checkout.formParams -> hidden form fields (incl. signature)
+// checkout.formParams -> hidden form fields (including the signature)
 // txnRef              -> { id, gateway }
 ```
 
-**Persist `txnRef.id → order.id` before redirecting** — you need it when the
-callback arrives.
+Persist the `txnRef.id → order.id` mapping **before redirecting**. You need it
+when the callback arrives.
 
-### 4. Redirect / render the form
-
-eSewa uses a `form_post` checkout. Render the returned fields as a hidden form
-and submit it:
+### 4. Redirect or render the form
 
 ```ts
-res.send(`
-  <form id="pay" method="POST" action="${checkout.url}">
-    ${Object.entries(checkout.formParams)
-      .map(([k, v]) => `<input type="hidden" name="${k}" value="${v}">`)
-      .join('')}
-  </form>
-  <script>document.getElementById('pay').submit()</script>
-`)
-```
-
-Khalti and Fonepay use a `redirect` checkout — send the browser to
-`checkout.url`:
-
-```ts
-if (checkout.type === 'redirect') res.redirect(checkout.url)
+if (checkout.type === 'redirect') {
+  res.redirect(checkout.url)
+} else {
+  res.send(`
+    <form id="pay" method="POST" action="${checkout.url}">
+      ${Object.entries(checkout.formParams)
+        .map(([k, v]) => `<input type="hidden" name="${k}" value="${v}">`)
+        .join('')}
+    </form>
+    <script>document.getElementById('pay').submit()</script>
+  `)
+}
 ```
 
 ### 5. Handle the callback
 
-The customer returns to your success URL (or the gateway calls your callback
-URL). Treat everything as untrusted input.
+Treat the raw query/body as untrusted and pass it through unchanged.
 
 ```ts
 // GET /payments/callback?data=<base64>
 const callback = gateway.parseCallback({ query: req.query })
 ```
 
-### 6. Verify (server-side, always)
+### 6. Verify server-side
 
-`verify()` re-checks the gateway tag, order, amount, and signature in constant
-time, then (for eSewa) confirms against the status API before sealing the
-result.
+`verify()` re-checks the gateway, order, amount, and signature in constant time,
+then confirms with the gateway before sealing the result.
 
 ```ts
 const payment = await gateway.verify(callback, { expected: order })
 
-// payment is a frozen VerifiedPayment
 payment.orderId // 'ORDER-1001'
 payment.amount // Money
 payment.status // 'completed' | 'pending' | 'failed' | ...
@@ -180,8 +160,7 @@ payment.txnRef // { id, gateway }
 
 ### 7. Fulfill
 
-Fulfill only on a sealed `completed` payment, and guard against duplicate
-callbacks by order id.
+Fulfill only a sealed `completed` payment, and guard against duplicate callbacks.
 
 ```ts
 if (payment.status === 'completed' && !alreadyFulfilled(payment.orderId)) {
@@ -222,16 +201,16 @@ const amount = moneyFromDecimal('100.50') // { amount: 10050n, currency: 'NPR', 
 moneyToDecimal(amount) // '100.50'
 ```
 
-- `createMoney(amount: bigint | number | string, currency?, precision?)` — scaled
-  minor-unit input. Number amounts must be safe integers.
-- `moneyFromDecimal(decimal: string, currency?, precision?)` — decimal string
-  input. Use this for user input.
+- `createMoney(amount, currency?, precision?)` — scaled minor-unit input.
+  Number amounts must be safe integers.
+- `moneyFromDecimal(decimal, currency?, precision?)` — decimal string input.
+  Use this for user input.
 - Arithmetic (`addMoney`, `subtractMoney`, `multiplyMoney`) requires matching
   currency **and** precision.
-- `compareMoney` / `moneyEquals` are cross-precision and same-currency
-  (`100`, `100.0`, and `100.00` are equal).
-- `moneyToJSON` / `moneyFromJSON` give an exact portable representation
-  (`{ amount: "10000", currency: "NPR", precision: 2 }`).
+- `compareMoney` / `moneyEquals` are cross-precision and same-currency (`100`,
+  `100.0`, and `100.00` are equal).
+- `moneyToJSON` / `moneyFromJSON` produce an exact portable representation:
+  `{ amount: "10000", currency: "NPR", precision: 2 }`.
 
 ### Order
 
@@ -275,10 +254,10 @@ interface CheckoutResult {
 }
 ```
 
-`verify()` **requires** `expected: Order` — verification is always bound to the
+`verify()` **requires** `expected: Order`; verification is always bound to the
 order you stored.
 
-### Checkout & TxnRef
+### Checkout and TxnRef
 
 ```ts
 type Checkout =
@@ -320,7 +299,7 @@ interface UnverifiedCallback {
   readonly body?: unknown
 }
 
-callbackFingerprint(callback): Promise<string> // stable SHA-256, for replay bookkeeping
+callbackFingerprint(callback): Promise<string> // stable SHA-256 for replay bookkeeping
 ```
 
 ### VerifiedPayment
@@ -341,13 +320,11 @@ isVerifiedPayment(value): value is VerifiedPayment
 isCompletedPayment(value): boolean
 ```
 
-- Sealed with a private brand, and the object (including `amount`, `txnRef`,
-  `verifiedAt`, and a deep-cloned `raw`) is frozen. Extra input keys are dropped.
-- The seal is a **type / accident barrier, not a cryptographic proof**. It is
-  lost through JSON serialization and object spread — persist and re-verify
-  explicitly.
-- The factory lives in `@nepal-payments/core/internal` and is **not** part of the
-  public surface.
+- The object (including `amount`, `txnRef`, `verifiedAt`, and a deep-cloned
+  `raw`) is frozen. Extra input keys are dropped.
+- The seal is a **type/accident barrier, not a cryptographic proof**. It is lost
+  through JSON serialization and object spread. Persist and re-verify explicitly.
+- The factory lives in `@nepal-payments/core/internal` and is not public API.
 
 ### PaymentStatus
 
@@ -367,25 +344,43 @@ import { reconcile } from '@nepal-payments/core'
 const result = await reconcile(
   gateway,
   { order, txnRef },
-  { maxAttempts: 5, backoffMs: 250, timeoutMs: 10_000 }
+  {
+    maxAttempts: 5, // default 3
+    backoffMs: 250, // default 250, doubles per attempt
+    maxBackoffMs: 5000,
+    timeoutMs: 10_000,
+    expiresAt: orderExpiresAt, // optional hard stop
+  }
 )
 
-result.resolved // true once completed/failed/canceled/expired
+result.payment // last observed VerifiedPayment
 result.status
+result.attempts
+result.resolved // true only for completed/failed/canceled/expired
 result.reason // 'terminal' | 'exhausted' | 'timeout' | 'expired'
 ```
 
-`reconcile()` retries while a payment is non-terminal with exponential backoff
+`reconcile()` retries while a payment is non-terminal (`pending` or `unknown`)
 and stops on a terminal status, timeout, expiry, or attempt limit. It performs
 one bounded run and **does not schedule itself** — drive it from your own queue
-or cron. See [reconciliation.md](docs/reconciliation.md).
+or cron.
 
 ### Persistence
 
-`PaymentStore` is an optional, database-agnostic interface (an in-memory
-implementation is included for tests):
+`PaymentStore` is optional and database-agnostic. An in-memory implementation is
+included for tests.
 
 ```ts
+interface Payment {
+  readonly orderId: string
+  readonly amount: Money
+  readonly status: PaymentStatus
+  readonly txnRef: TxnRef
+  readonly verifiedAt: Date
+  readonly updatedAt: Date
+  readonly raw?: Record<string, unknown>
+}
+
 interface PaymentStore {
   getPayment(orderId: string): Promise<Payment | null>
   savePayment(payment: Payment): Promise<void>
@@ -396,9 +391,24 @@ paymentFromVerified(payment: VerifiedPayment, now?: Date): Payment
 createInMemoryPaymentStore(): InMemoryPaymentStore
 ```
 
-`paymentFromVerified()` rejects anything `verify()` did not seal with
-`UNVERIFIED_PAYMENT`. See [persistence.md](docs/persistence.md) for Postgres and
-Redis examples.
+- `savePayment` should upsert by `orderId`.
+- `acquireIdempotencyKey` must atomically claim a key, returning `true` only for
+  the first caller.
+- `paymentFromVerified()` rejects anything `verify()` did not seal with
+  `UNVERIFIED_PAYMENT`.
+
+Serialization: `Money` stores a `bigint` and timestamps are `Date`, so do not
+rely on plain `JSON.stringify`. Persist `amount.amount.toString()`,
+`currency`, `precision`, and ISO date strings; read back with `createMoney()` and
+`new Date()`.
+
+```ts
+// Idempotent fulfillment
+const claimed = await store.acquireIdempotencyKey(payment.orderId)
+if (!claimed) return
+await store.savePayment(paymentFromVerified(payment))
+if (payment.status === 'completed') await ship(payment.orderId)
+```
 
 ### Crypto helpers
 
@@ -422,14 +432,13 @@ RSA helpers (`importPkcs8PrivateKey`, `importSpkiPublicKey`, `rsaSha256Sign`,
 
 ## Gateways
 
-Each gateway is a config object plus the shared lifecycle. The full integration
-details, endpoint notes, and edge cases live in the linked guide.
+Each gateway is a config object plus the shared lifecycle.
 
 ### eSewa
 
 Form-POST integration for eSewa ePay V2. There is no server-side initiation
-call: you build a signed form and hand it to the browser. Full guide:
-[eSewa](docs/esewa.md).
+call: build a signed form and hand it to the browser. Checkout type:
+`form_post`.
 
 ```ts
 import { createEsewa } from '@nepal-payments/esewa'
@@ -483,7 +492,7 @@ must agree and `ref_id` must match `transaction_code`.
 
 REST-redirect integration for Khalti ePayment. Khalti requires a **server-side
 lookup** to confirm every payment; the redirect query string is never trusted.
-Full guide: [Khalti](docs/khalti.md).
+Checkout type: `redirect`.
 
 ```ts
 import { createKhalti } from '@nepal-payments/khalti'
@@ -509,9 +518,10 @@ const gateway = createKhalti({
 
 \* A return URL is required, from config or the order.
 
-Notes: Khalti requires at least **Rs. 10** (1000 paisa) and at most 2 decimal
-places. `purchase_order_name` falls back to `order.productName`, then
-`order.description`, then `order.id`.
+Khalti requires at least **Rs. 10** (1000 paisa) and at most 2 decimal places.
+`purchase_order_name` falls back to `order.productName`, then
+`order.description`, then `order.id`. `customer_info` is built from the order's
+customer fields.
 
 `verify()` checks the gateway tag, a well-formed `pidx`, the amount and
 `purchase_order_id` against `expected`, and then the **Khalti lookup API**. The
@@ -530,8 +540,8 @@ sealed `txnRef.id` is the `pidx`.
 
 Form-POST integration for the NCHL connectIPS merchant gateway. The callback
 carries **only `TXNID`**, so `verify()` always calls the server-to-server
-`validatetxn` API to establish authenticity and amount. Full guide:
-[connectIPS](docs/connectips.md).
+`validatetxn` API to establish authenticity and amount. Checkout type:
+`form_post`.
 
 NCHL provides an RSA credential as a PKCS#12 archive. WebCrypto cannot read it,
 so convert it once to PKCS#8 (Node-only, behind the
@@ -592,7 +602,7 @@ is the source of truth — the callback carries no status.
 
 GET-redirect integration for the Fonepay merchant gateway. The callback carries a
 signed `DV`, so `verify()` authenticates it locally and (by default) confirms a
-completed payment server-side. Full guide: [Fonepay](docs/fonepay.md).
+completed payment server-side. Checkout type: `redirect`.
 
 ```ts
 import { createFonepay } from '@nepal-payments/fonepay'
@@ -668,10 +678,11 @@ const payment = await gateway.verify(gateway.parseCallback(raw), {
 | `timeout`           | throws `AbortError`            | `verify`/`status` abort after `timeoutMs` |
 | `invalid-signature` | callback signature is forged   | `verify` throws `SIGNATURE_MISMATCH`      |
 
-Controls: `pay`, `settle`, `expire`, `setStatus`, `generateCallback`, plus the
-raw `ledger`. See [testing.md](docs/testing.md).
+Configuration: `secretKey` (required), `scenario`, `checkoutUrl`, `delayMs`,
+`timeoutMs`. Controls: `pay`, `settle`, `expire`, `setStatus`,
+`generateCallback`, plus the raw `ledger`.
 
-## Command-line tool (`npay`)
+## CLI
 
 Install with `pnpm add -D @nepal-payments/cli` (or run it from the workspace with
 `pnpm --filter @nepal-payments/cli exec npay`).
@@ -685,45 +696,8 @@ npay fixtures validate          # parse and check the bundled JSON vectors
 npay connectips import-pfx ./CREDITOR.pfx --out ./creditor.key
 ```
 
-`npay init` writes **placeholders only** — it never invents or stores secrets.
-
-## Reconciliation
-
-Callbacks can be lost or delayed. Ask the gateway what happened instead of
-waiting:
-
-```ts
-import { reconcile } from '@nepal-payments/core'
-
-const result = await reconcile(
-  gateway,
-  { order, txnRef },
-  { maxAttempts: 5, backoffMs: 250, timeoutMs: 10_000 }
-)
-
-if (result.resolved) await fulfill(result.payment)
-```
-
-`reconcile()` is a single bounded run — schedule it from your own cron or queue.
-A run stops on a terminal status (`completed`, `failed`, `canceled`, `expired`),
-`timeoutMs`, `expiresAt`, or `maxAttempts`; `pending` and `unknown` are
-non-terminal. See [reconciliation.md](docs/reconciliation.md).
-
-## Persistence
-
-The SDK ships no database. Persist payments and idempotency keys by implementing
-the `PaymentStore` interface — an in-memory version is included for tests.
-
-```ts
-import { paymentFromVerified } from '@nepal-payments/core'
-
-if (result.resolved) {
-  await store.savePayment(paymentFromVerified(result.payment))
-}
-```
-
-See [persistence.md](docs/persistence.md) for Postgres and Redis examples and the
-serialization rules for `bigint` money and `Date` timestamps.
+`npay init` writes **placeholders only** — it never invents or stores secrets,
+and leaves existing files alone unless `--force` is passed.
 
 ## Testing
 
@@ -740,7 +714,29 @@ pnpm test:bun        # run the Bun runtime example test
 
 The repo also ships a **conformance suite** (`tests/conformance`) run against
 every gateway through thin drivers, and language-agnostic **JSON vectors**
-(`tests/vectors`). See [testing.md](docs/testing.md).
+(`tests/vectors`) covering amounts, callbacks, signatures, and status mappings.
+
+To test a gateway without the network, inject `fetch`:
+
+```ts
+const gateway = createKhalti({
+  secretKey: 'sandbox-secret',
+  environment: 'sandbox',
+  returnUrl: 'https://example.com/callback',
+  fetch: async () =>
+    new Response(
+      JSON.stringify({ pidx: 'pidx-1', payment_url: 'https://pay/x' }),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    ),
+})
+```
+
+Guidelines:
+
+- Never call a real gateway in unit tests — inject `fetch` or use the mock.
+- Cover failure paths (tampered signature, amount/order mismatch, unknown
+  transaction, timeout); they are the security surface.
+- Keep fixtures deterministic; freeze time or inject ids where needed.
 
 ## Security
 
@@ -756,13 +752,20 @@ every gateway through thin drivers, and language-agnostic **JSON vectors**
 - **The seal is a type/accident barrier, not a cryptographic proof.** It is lost
   through JSON round-trips; re-verify before acting on persisted data.
 - **Secrets never leave your server** and are never logged.
+- **Idempotency.** Callbacks can repeat; guard fulfillment on a unique order id
+  at the database level.
+- **Environment and credentials must match.** Sandbox and production secrets
+  differ; overriding endpoints must be consistent with the credentials.
+- **Replay bookkeeping.** Record `callbackFingerprint()` per handled callback and
+  refuse duplicates.
 
-See [security.md](docs/security.md) for the trust model and residual risks.
+`payment.raw` is safe to log and helps diagnose disagreements, but it is a frozen
+clone.
 
 ## Errors
 
 Every error extends `NepalPaymentsError` with a machine-readable `code`. Branch
-on `error.code`, not on the message.
+on `error.code`, not the message.
 
 ```ts
 import { NepalPaymentsError } from '@nepal-payments/core'
@@ -784,22 +787,47 @@ try {
 | `ConfigurationError` | Bad gateway configuration                             |
 | `MoneyError`         | Invalid money construction or arithmetic              |
 
-Common codes: `INVALID_ORDER_ID`, `INVALID_AMOUNT`, `INVALID_URL`,
-`MALFORMED_CALLBACK`, `GATEWAY_MISMATCH`, `SIGNATURE_MISMATCH`,
-`AMOUNT_MISMATCH`, `ORDER_MISMATCH`, `UNKNOWN_TRANSACTION`,
-`UNVERIFIED_PAYMENT`. See [errors.md](docs/errors.md) for the full reference and
-[troubleshooting.md](docs/troubleshooting.md) for symptom-driven fixes.
+Common codes:
+
+| Code                      | Meaning                                                       |
+| ------------------------- | ------------------------------------------------------------- |
+| `INVALID_ORDER`           | Malformed order (e.g. non-string metadata value)              |
+| `INVALID_ORDER_ID`        | Order id missing, empty, too long, or contains bad characters |
+| `INVALID_AMOUNT`          | Amount invalid, zero/negative, or unsupported                 |
+| `UNSAFE_AMOUNT`           | Amount exceeds `Number.MAX_SAFE_INTEGER` minor units          |
+| `INVALID_URL`             | A return/success/failure/website URL is invalid               |
+| `INVALID_STATUS`          | Unknown status value or failed status transition              |
+| `INVALID_TXN_REF`         | Transaction reference id/shape is invalid                     |
+| `INVALID_BASE64`          | Base64 payload could not be decoded                           |
+| `INVALID_MONEY`           | Not a valid `Money` value                                     |
+| `INVALID_CURRENCY`        | Currency other than the supported `'NPR'`                     |
+| `INVALID_PRECISION`       | Precision outside the supported range                         |
+| `INVALID_DECIMAL`         | Decimal string could not be parsed exactly                    |
+| `CURRENCY_MISMATCH`       | Combining money of different currencies                       |
+| `PRECISION_MISMATCH`      | Combining money of different precision                        |
+| `MALFORMED_CALLBACK`      | Callback payload missing/undecodable/not JSON                 |
+| `GATEWAY_MISMATCH`        | Callback verified with the wrong gateway adapter              |
+| `SIGNATURE_MISMATCH`      | Signature missing or wrong (or secret mismatch)               |
+| `AMOUNT_MISMATCH`         | Callback amount does not match the expected order amount      |
+| `ORDER_MISMATCH`          | Callback order id/product code does not match expected order  |
+| `UNKNOWN_TRANSACTION`     | Gateway has no such transaction (or status disagrees)         |
+| `UNVERIFIED_PAYMENT`      | Tried to persist a payment that `verify()` did not seal       |
+| `INVALID_IDEMPOTENCY_KEY` | Idempotency key is empty or not a string                      |
+
+`verify()` may also throw a `VerificationError` without a code for transport
+failures (e.g. malformed JSON from a status lookup); handle a missing `code`
+defensively. Map `NepalPaymentsError` to HTTP 400 (bad/untrusted input) and
+unexpected errors to 500.
 
 ## Architecture
 
 - **Stateless by default** — no sessions, no database, no hidden state. You
-  persist the order and the `txnRef.id → order.id` mapping; everything else is
-  derived.
+  persist the order and the `txnRef.id → order.id` mapping.
 - **No framework lock-in** — pure functions and plain objects. `core` depends on
-  no framework; the example apps show Express, Hono, and Next.js.
+  no framework; example apps show Express, Hono, and Next.js.
 - **No floating point money** — `bigint` minor units.
-- **No gateway-specific logic in core** — each gateway implements the contract in
-  its own package.
+- **No gateway-specific logic in core** — each gateway implements the contract
+  in its own package.
 - **Verify before trust** — only `verify()` produces a `VerifiedPayment`.
 
 ```
@@ -818,9 +846,9 @@ apps/
 └── next-example/
 ```
 
-**Adding a gateway:** implement `GatewayAdapter` with `core` types, add its
-method to `PAYMENT_METHODS`, add fixtures and a conformance driver, and document
-it. See the per-gateway protocol notes in [`docs/research/`](docs/research/).
+Adding a gateway: implement `GatewayAdapter` with `core` types, add its method
+to `PAYMENT_METHODS`, add fixtures and a conformance driver, and extend this
+README with its configuration and status mapping.
 
 ## Development
 
@@ -846,17 +874,7 @@ Runnable apps in [`apps/`](apps) demonstrate the recommended server wiring:
 - [`apps/hono-example`](apps/hono-example)
 - [`apps/next-example`](apps/next-example)
 
-## Documentation
-
-- [Tutorials](docs/tutorials/) — hands-on walkthroughs from zero to production
-- [eSewa](docs/esewa.md) · [Khalti](docs/khalti.md) · [connectIPS](docs/connectips.md) · [Fonepay](docs/fonepay.md)
-- [Reconciliation](docs/reconciliation.md) — polling status for missing callbacks
-- [Persistence](docs/persistence.md) — the optional `PaymentStore`
-- [Testing](docs/testing.md) — the mock gateway, conformance suite, vectors
-- [Security](docs/security.md) — the trust model · [security review](docs/security-review.md) — the adversarial audit
-- [Errors](docs/errors.md) · [Troubleshooting](docs/troubleshooting.md)
-- [Gateway contract](docs/gateway-contract.md) — the full shipped API surface
-- [Protocol research](docs/research/) — endpoints and signing notes per gateway
+Each app is also exercised by the framework tests against the mock gateway.
 
 ## License
 

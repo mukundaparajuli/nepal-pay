@@ -26,7 +26,7 @@ const HEADER = `# Nepal Payments environment template
 # committed) and fill in real credentials. \`npay gateway test <gateway>\`
 # reads these variables.
 #
-# Never commit real secrets. See docs/security.md.`
+# Never commit real secrets. See the Security section in README.md.`
 
 function renderEnvTemplate(methods: readonly PaymentMethod[]): string {
   const blocks: string[] = [HEADER]
