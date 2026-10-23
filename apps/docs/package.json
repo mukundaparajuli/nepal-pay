@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "typecheck": "tsc --noEmit",
     "preview": "pnpm dlx serve out"
   },
   "dependencies": {
     "@nepal-pay/core": "workspace:^",
+    "@vercel/analytics": "^2.0.1",
     "flexsearch": "^0.8.212",
     "fumadocs-core": "^16.17.7",
     "fumadocs-mdx": "^15.4.9",
