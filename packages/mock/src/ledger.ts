@@ -1,4 +1,4 @@
-import { VerificationError } from '@nepal-payments/core'
+import { VerificationError } from '@nepal-pay/core'
 import type { MockLedgerEntry, MockLedgerStatus } from './types.js'
 
 export class MockLedger {

@@ -6,7 +6,7 @@ import {
   type Checkout,
   type Money,
   type Order,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type { ResolvedEsewaConfig, EsewaCheckoutOptions } from './types.js'
 import { signFields } from './signing.js'
 import {

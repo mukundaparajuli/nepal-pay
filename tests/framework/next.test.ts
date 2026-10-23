@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { POST as checkoutPost } from '../../apps/next-example/app/api/checkout/route.js'
 import { GET as callbackGet } from '../../apps/next-example/app/api/payment/callback/route.js'
 import { getGateway } from '../../apps/next-example/src/store.js'
-import type { TxnRef } from '@nepal-payments/core'
-import { safeBase64Encode } from '@nepal-payments/core'
-import { signMockCallback } from '@nepal-payments/mock'
+import type { TxnRef } from '@nepal-pay/core'
+import { safeBase64Encode } from '@nepal-pay/core'
+import { signMockCallback } from '@nepal-pay/mock'
 import { callbackData } from './helpers.js'
 
 function checkoutRequest(body: unknown, validJson = true): Promise<Response> {

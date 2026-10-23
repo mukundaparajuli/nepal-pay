@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createPublicKey, verify as nodeVerify } from 'node:crypto'
-import { pfxToPkcs8Pem } from '@nepal-payments/connectips/pfx'
-import type { ConnectIpsConfig } from '@nepal-payments/connectips'
+import { pfxToPkcs8Pem } from '@nepal-pay/connectips/pfx'
+import type { ConnectIpsConfig } from '@nepal-pay/connectips'
 
 export const TEST_PFX_PASSWORD = 'connectips-test-password'
 

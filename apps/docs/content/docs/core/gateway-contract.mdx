@@ -1,0 +1,158 @@
+---
+title: Gateway contract
+description: The four methods every gateway implements and the rules they must follow.
+---
+
+# Gateway contract
+
+Every gateway, real or mock, implements the same interface. That interface is
+the reason your application can switch providers without changing its routing,
+persistence, or fulfillment code.
+
+```ts
+interface GatewayAdapter {
+  readonly name: PaymentMethod
+  createCheckout(order: Order): Promise<CheckoutResult>
+  parseCallback(request: RawCallbackRequest): UnverifiedCallback
+  verify(
+    callback: UnverifiedCallback,
+    options: VerifyOptions
+  ): Promise<VerifiedPayment>
+  status(txnRef: TxnRef, options?: StatusOptions): Promise<VerifiedPayment>
+}
+```
+
+The methods form a lifecycle:
+
+```text
+createCheckout ──► Checkout + TxnRef
+                        │
+                        ▼
+                customer pays at gateway
+                        │
+                        ▼
+parseCallback ──► UnverifiedCallback
+                        │
+                        ▼
+verify ──► VerifiedPayment
+                        │
+                        ▼
+status (optional, for reconciliation)
+```
+
+## The four methods
+
+### `createCheckout(order)`
+
+Builds the request that sends the customer to the gateway. It returns:
+
+- `checkout`: how to get there (`redirect` or `form_post`)
+- `txnRef`: the gateway's id for this attempt
+
+```ts
+type Checkout =
+  | { type: 'redirect'; url: string; headers?: Record<string, string> }
+  | {
+      type: 'form_post'
+      url: string
+      formParams: Record<string, string>
+      headers?: Record<string, string>
+    }
+
+interface TxnRef {
+  id: string
+  gateway: PaymentMethod
+}
+```
+
+`createCheckout` does not redirect or render anything. It returns data; your
+server decides how to present it. This keeps the adapter usable in Express,
+Next.js, Hono, workers, and tests.
+
+`createCheckout` may throw:
+
+| Code                                                    | When                                                        |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
+| `INVALID_ORDER` / `INVALID_ORDER_ID` / `INVALID_AMOUNT` | The order is malformed                                      |
+| `INVALID_URL`                                           | A required return/success/failure URL is missing or invalid |
+| `CONFIGURATION_ERROR`                                   | Credentials or environment are incomplete                   |
+
+### `parseCallback(request)`
+
+Decodes the gateway's response into an `UnverifiedCallback`:
+
+```ts
+interface UnverifiedCallback {
+  gateway: PaymentMethod
+  data: Record<string, unknown>
+  headers?: Record<string, string>
+  body?: unknown
+}
+```
+
+**It only decodes.** It does not verify signatures, amounts, orders, or statuses.
+The type name is the warning: this object is not safe to act on.
+
+Pass the raw request through. Gateways sign exact bytes or parameter order; if
+you trim, lowercase, or re-encode the payload, a valid signature can stop
+matching.
+
+### `verify(callback, { expected })`
+
+The trust boundary. It returns a sealed `VerifiedPayment` or throws.
+
+Every adapter must check, in this order:
+
+1. **Gateway tag**: the callback belongs to this adapter.
+2. **Signature**: the payload is authentic, compared in constant time.
+3. **Order**: the callback's order id matches `expected.id`.
+4. **Amount**: the callback's amount matches `expected.amount`.
+5. **Server-side confirmation**: ask the gateway's status API (or the mock's
+   ledger) whether the payment really reached that state.
+
+`expected` is required. Verification is always bound to an order you stored, not
+one supplied by the callback.
+
+### `status(txnRef, options?)`
+
+Asks the gateway for the current state of a transaction. Use it for:
+
+- reconciliation when a callback never arrives
+- polling a pending payment
+- an admin "is this order actually paid?" action
+
+Most adapters accept `{ expected }` here too, which also enforces order id and
+amount. Fonepay requires it because its lookup needs the amount.
+
+`status()` returns a `VerifiedPayment`, not a raw status string. It goes through
+the same mapping and sealing rules as `verify()`.
+
+## Invariants every adapter must preserve
+
+1. **Only `verify()` and `status()` create `VerifiedPayment` objects.**
+2. **Amounts are compared with `Money`, not numbers.**
+3. **Signatures are compared in constant time.**
+4. **The callback's status is never trusted without server-side confirmation.**
+5. **Secrets never appear in `raw`, logs, or errors.**
+6. **The adapter is stateless.** No hidden caches, sessions, or globals.
+
+The conformance suite runs these invariants against every gateway.
+
+## Adding a gateway
+
+If you maintain your own adapter:
+
+1. Implement `GatewayAdapter` with `core` types.
+2. Add the method name to `PAYMENT_METHODS`.
+3. Add fixtures for success, tampering, and status mapping.
+4. Add a conformance driver.
+5. Document the callback shape and the order-id field.
+
+Use the existing packages as templates; they are intentionally small.
+
+## Where to go next
+
+- [API reference](/docs/reference/api): exact TypeScript signatures.
+- [Verification](/docs/core/verification): why the boundary is shaped this way.
+- [Callbacks](/docs/core/callbacks): handling untrusted input.
+- [Architecture](/docs/guides/architecture): how the packages fit together.

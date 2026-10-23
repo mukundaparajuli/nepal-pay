@@ -5,14 +5,14 @@ import {
   createOrder,
   moneyFromDecimal,
   importPkcs8PrivateKey,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   buildCheckoutTokenMessage,
   createConnectIps,
   type ConnectIpsConfig,
   type ConnectIpsFormParams,
-} from '@nepal-payments/connectips'
-import { pfxToPkcs8Pem } from '@nepal-payments/connectips/pfx'
+} from '@nepal-pay/connectips'
+import { pfxToPkcs8Pem } from '@nepal-pay/connectips/pfx'
 
 /**
  * Live UAT tests for connectIPS.

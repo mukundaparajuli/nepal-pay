@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError, moneyFromDecimal } from '@nepal-payments/core'
+import { PaymentError, moneyFromDecimal } from '@nepal-pay/core'
 import {
   SANDBOX_INITIATE_URL,
   SANDBOX_SECRET,

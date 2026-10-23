@@ -1,9 +1,9 @@
-import { createOrder, moneyFromDecimal, type Order } from '@nepal-payments/core'
+import { createOrder, moneyFromDecimal, type Order } from '@nepal-pay/core'
 import {
   createKhalti,
   type KhaltiConfig,
   type KhaltiGateway,
-} from '@nepal-payments/khalti'
+} from '@nepal-pay/khalti'
 
 export const SANDBOX_SECRET = 'sk_test_0123456789abcdef0123456789abcdef'
 export const SANDBOX_INITIATE_URL =

@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createApp } from '../../apps/hono-example/src/app.js'
-import { createMockGateway } from '@nepal-payments/mock'
-import {
-  createOrder,
-  moneyFromDecimal,
-  type TxnRef,
-} from '@nepal-payments/core'
+import { createMockGateway } from '@nepal-pay/mock'
+import { createOrder, moneyFromDecimal, type TxnRef } from '@nepal-pay/core'
 
 describe('hono example on Bun', () => {
   it('serves checkout and callback through Bun.serve', async () => {

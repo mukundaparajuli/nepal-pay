@@ -1,4 +1,4 @@
-import type { Checkout, Order, TxnRef } from '@nepal-payments/core'
+import type { Checkout, Order, TxnRef } from '@nepal-pay/core'
 
 export type FonepayEnvironment = 'sandbox' | 'production'
 

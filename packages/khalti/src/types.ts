@@ -1,4 +1,4 @@
-import type { Order } from '@nepal-payments/core'
+import type { Order } from '@nepal-pay/core'
 
 export type KhaltiEnvironment = 'sandbox' | 'production'
 

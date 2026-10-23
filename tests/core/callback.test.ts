@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { callbackFingerprint } from '@nepal-payments/core'
-import type { UnverifiedCallback } from '@nepal-payments/core'
+import { callbackFingerprint } from '@nepal-pay/core'
+import type { UnverifiedCallback } from '@nepal-pay/core'
 
 describe('callbackFingerprint', () => {
   it('is stable across data key order', async () => {

@@ -4,7 +4,7 @@ import {
   createFonepay,
   verifyFonepayDv,
   type FonepayConfig,
-} from '@nepal-payments/fonepay'
+} from '@nepal-pay/fonepay'
 import { order } from './helpers.js'
 
 /**

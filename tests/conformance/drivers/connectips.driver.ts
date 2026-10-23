@@ -6,12 +6,9 @@ import {
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
-import {
-  createConnectIps,
-  type ConnectIpsConfig,
-} from '@nepal-payments/connectips'
-import { pfxToPkcs8Pem } from '@nepal-payments/connectips/pfx'
+} from '@nepal-pay/core'
+import { createConnectIps, type ConnectIpsConfig } from '@nepal-pay/connectips'
+import { pfxToPkcs8Pem } from '@nepal-pay/connectips/pfx'
 import {
   TEST_APP_ID,
   TEST_APP_NAME,

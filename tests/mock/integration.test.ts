@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest'
 import {
   safeBase64Encode,
   isVerifiedPayment,
-  NepalPaymentsError,
+  NepalPayError,
   type CheckoutResult,
   type Order,
   type RawCallbackRequest,
   type TxnRef,
   type VerifiedPayment,
-} from '@nepal-payments/core'
-import { signMockCallback, type MockGateway } from '@nepal-payments/mock'
+} from '@nepal-pay/core'
+import { signMockCallback, type MockGateway } from '@nepal-pay/mock'
 import { MOCK_SECRET, isAbortError, mockGateway, order } from './helpers.js'
 
 interface MerchantStore {
@@ -187,8 +187,8 @@ describe('mock gateway merchant integration', () => {
     await gateway.pay(checkout.txnRef)
 
     const error = await attempt(() => gateway.generateCallback(checkout.txnRef))
-    expect(error).toBeInstanceOf(NepalPaymentsError)
-    expect((error as NepalPaymentsError).code).toBe('UNKNOWN_TRANSACTION')
+    expect(error).toBeInstanceOf(NepalPayError)
+    expect((error as NepalPayError).code).toBe('UNKNOWN_TRANSACTION')
     expect(fulfilledCount(store, expected.id)).toBe(0)
 
     const beforeExpiry = await handleStatus(store, gateway, checkout.txnRef)
@@ -287,8 +287,8 @@ describe('mock gateway merchant integration', () => {
         await gateway.generateCallback(checkout.txnRef)
       )
     )
-    expect(error).toBeInstanceOf(NepalPaymentsError)
-    expect((error as NepalPaymentsError).code).toBe('SIGNATURE_MISMATCH')
+    expect(error).toBeInstanceOf(NepalPayError)
+    expect((error as NepalPayError).code).toBe('SIGNATURE_MISMATCH')
     expect(fulfilledCount(store, expected.id)).toBe(0)
   })
 

@@ -3,8 +3,8 @@ import {
   callbackFingerprint,
   safeBase64Encode,
   VerificationError,
-} from '@nepal-payments/core'
-import { signMockCallback } from '@nepal-payments/mock'
+} from '@nepal-pay/core'
+import { signMockCallback } from '@nepal-pay/mock'
 import { mockGateway, MOCK_SECRET, order } from './helpers.js'
 
 describe('mock security', () => {

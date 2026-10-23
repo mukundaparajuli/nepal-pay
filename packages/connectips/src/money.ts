@@ -3,7 +3,7 @@ import {
   moneyFromDecimal,
   VerificationError,
   type Money,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import { CONNECTIPS_CURRENCY } from './constants.js'
 
 const PAISA_PRECISION = 2

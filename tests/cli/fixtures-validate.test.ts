@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  createNodeContext,
-  runCli,
-  validateFixtures,
-} from '@nepal-payments/cli'
+import { createNodeContext, runCli, validateFixtures } from '@nepal-pay/cli'
 import { makeHarness } from './harness.js'
 
 function seedValidTree(h: ReturnType<typeof makeHarness>): void {

@@ -4,15 +4,15 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@nepal-payments/core": ["../packages/core/src"],
-      "@nepal-payments/core/internal": ["../packages/core/src/internal.ts"],
-      "@nepal-payments/connectips": ["../packages/connectips/src"],
-      "@nepal-payments/connectips/pfx": ["../packages/connectips/src/pfx.ts"],
-      "@nepal-payments/fonepay": ["../packages/fonepay/src"],
-      "@nepal-payments/cli": ["../packages/cli/src"],
-      "@nepal-payments/esewa": ["../packages/esewa/src"],
-      "@nepal-payments/khalti": ["../packages/khalti/src"],
-      "@nepal-payments/mock": ["../packages/mock/src"]
+      "@nepal-pay/core": ["../packages/core/src"],
+      "@nepal-pay/core/internal": ["../packages/core/src/internal.ts"],
+      "@nepal-pay/connectips": ["../packages/connectips/src"],
+      "@nepal-pay/connectips/pfx": ["../packages/connectips/src/pfx.ts"],
+      "@nepal-pay/fonepay": ["../packages/fonepay/src"],
+      "@nepal-pay/cli": ["../packages/cli/src"],
+      "@nepal-pay/esewa": ["../packages/esewa/src"],
+      "@nepal-pay/khalti": ["../packages/khalti/src"],
+      "@nepal-pay/mock": ["../packages/mock/src"]
     }
   },
   "include": ["**/*.ts"]

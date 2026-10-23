@@ -3,7 +3,7 @@ import {
   VerificationError,
   type Money,
   type PaymentStatus,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type { ResolvedKhaltiConfig } from './types.js'
 import type { KhaltiLookupResponse } from './types.js'
 

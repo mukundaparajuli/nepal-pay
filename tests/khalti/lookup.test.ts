@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { VerificationError, moneyFromDecimal } from '@nepal-payments/core'
-import { khaltiPaisaToMoney, mapKhaltiStatus } from '@nepal-payments/khalti'
+import { VerificationError, moneyFromDecimal } from '@nepal-pay/core'
+import { khaltiPaisaToMoney, mapKhaltiStatus } from '@nepal-pay/khalti'
 import {
   COMPLETED_PIDX,
   SANDBOX_LOOKUP_URL,

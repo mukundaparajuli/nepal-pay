@@ -7,9 +7,7 @@ import { isPaymentMethod } from './method.js'
 import { PaymentError } from './errors.js'
 import { isValidOrderId } from './utils.js'
 
-const verifiedPaymentBrand: unique symbol = Symbol(
-  'nepal-payments.verified-payment'
-)
+const verifiedPaymentBrand: unique symbol = Symbol('nepal-pay.verified-payment')
 
 export interface VerifiedPayment {
   readonly [verifiedPaymentBrand]: true

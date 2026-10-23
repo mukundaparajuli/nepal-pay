@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { VerificationError } from '@nepal-payments/core'
+import { VerificationError } from '@nepal-pay/core'
 import { isAbortError, mockGateway, order } from './helpers.js'
 
 describe('mock status', () => {

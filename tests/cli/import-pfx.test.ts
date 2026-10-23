@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { importPkcs8PrivateKey, rsaSha256Sign } from '@nepal-payments/core'
-import { runCli } from '@nepal-payments/cli'
+import { importPkcs8PrivateKey, rsaSha256Sign } from '@nepal-pay/core'
+import { runCli } from '@nepal-pay/cli'
 import { TEST_PFX_PASSWORD, loadTestPfx } from '../connectips/helpers.js'
 import { makeHarness } from './harness.js'
 

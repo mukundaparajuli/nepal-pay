@@ -4,7 +4,7 @@ import {
   moneyToDecimal,
   VerificationError,
   type Money,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import { FONEPAY_CURRENCY } from './constants.js'
 
 const FONEPAY_PRECISION = 2

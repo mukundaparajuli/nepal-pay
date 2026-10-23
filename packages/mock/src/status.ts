@@ -1,4 +1,4 @@
-import type { PaymentStatus } from '@nepal-payments/core'
+import type { PaymentStatus } from '@nepal-pay/core'
 import type { MockLedgerStatus } from './types.js'
 
 const STATUS_MAP: Readonly<Record<MockLedgerStatus, PaymentStatus>> = {

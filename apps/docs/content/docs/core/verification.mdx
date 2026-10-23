@@ -1,0 +1,153 @@
+---
+title: Verification
+description: The single trust boundary between an untrusted callback and a sealed payment.
+---
+
+# Verification
+
+`verify()` is the most important function in the SDK. It decides whether a
+payment is real. Everything before it is untrusted input; everything after it is
+safe to act on.
+
+```ts
+const payment = await gateway.verify(callback, { expected: order })
+```
+
+If verification succeeds, you get a `VerifiedPayment`. If anything is wrong, it
+throws. There is no "verified but suspicious" result.
+
+## A forged callback, step by step
+
+Imagine an attacker opens your callback URL:
+
+```text
+https://shop.example/payments/esewa/success?data=<forged base64>
+```
+
+They can choose any order id, amount, and status. Without verification, this
+would mark an unpaid order as paid.
+
+`verify()` closes each gap:
+
+| Attacker's move                     | What stops it                                                  |
+| ----------------------------------- | -------------------------------------------------------------- |
+| Claim a different order             | `order_id` / `transaction_uuid` must equal `expected.id`       |
+| Claim a different amount            | Amount must equal `expected.amount`                            |
+| Invent a successful status          | Signature must be valid, and the gateway status API must agree |
+| Reuse a real callback               | Signature is valid, but fulfillment must be idempotent         |
+| Use a callback from another gateway | The `gateway` tag must match the adapter                       |
+
+The callback can still be a valid, signed message from the gateway. That is why
+you also need order and amount binding; a real callback for a Rs. 1 order
+should not fulfill a Rs. 10,000 order.
+
+## What `verify()` checks
+
+The exact order varies slightly by adapter, but every gateway enforces these
+invariants:
+
+1. **Gateway tag**: the callback belongs to this adapter's gateway.
+2. **Signature**: the payload was signed with the configured secret, compared
+   in constant time.
+3. **Order**: the callback's order id matches `expected.id`.
+4. **Amount**: the callback's amount equals `expected.amount`.
+5. **Server-side confirmation**: the gateway's status API (or the mock ledger)
+   agrees with the claimed state before the payment is sealed.
+
+For eSewa, Khalti, connectIPS, and Fonepay, step 5 is a real server-to-server
+call. This catches cases where a callback is signed but not final, or where the
+gateway's own state disagrees.
+
+## `VerifiedPayment`
+
+```ts
+interface VerifiedPayment {
+  readonly orderId: string
+  readonly amount: Money
+  readonly status: PaymentStatus
+  readonly txnRef: TxnRef
+  readonly verifiedAt: Date
+  readonly raw?: Record<string, unknown>
+}
+```
+
+The object is frozen, including `amount`, `txnRef`, `verifiedAt`, and a deep
+clone of `raw`. Extra fields from the gateway are dropped.
+
+The type carries a private brand. A plain object literal cannot be assigned to
+`VerifiedPayment`, and object spread or JSON round-trips lose the brand. That is
+intentional: persistence should not pretend an old record is freshly verified.
+
+```ts
+import { paymentFromVerified } from '@nepal-pay/core'
+
+// Convert a sealed payment into a storable plain object.
+const stored = paymentFromVerified(payment)
+```
+
+On read, treat the stored record as data. Re-verify with `status()` before acting
+on it if the payment could have changed.
+
+## Guards
+
+```ts
+import { isVerifiedPayment, isCompletedPayment } from '@nepal-pay/core'
+
+if (isCompletedPayment(payment)) {
+  // equivalent to payment.status === 'completed'
+}
+```
+
+## Statuses
+
+Every gateway maps its native states onto one set:
+
+```text
+'pending' | 'completed' | 'failed' | 'canceled' | 'expired' | 'unknown'
+```
+
+| Status      | What to do                             |
+| ----------- | -------------------------------------- |
+| `completed` | Fulfill, once                          |
+| `pending`   | Wait or reconcile; do not fulfill      |
+| `failed`    | Do not fulfill; show a failure message |
+| `canceled`  | Do not fulfill; let the customer retry |
+| `expired`   | Do not fulfill; create a new checkout  |
+| `unknown`   | Investigate/reconcile; never fulfill   |
+
+Use `isPaymentStatus(value)` if you need a runtime guard.
+
+## Status lookups
+
+`status()` performs the same server-side confirmation without a callback:
+
+```ts
+const payment = await gateway.status(txnRef, { expected: order })
+```
+
+Use it when:
+
+- a callback never arrived
+- a callback arrived before the gateway finalized the payment
+- an admin needs to know whether an order was paid
+- your reconciliation job is checking pending orders
+
+See [Reconciliation](/docs/core/reconciliation).
+
+## What verification does not do
+
+`verify()` does not:
+
+- mark your order paid
+- send a receipt
+- reserve inventory
+- prevent duplicate callbacks
+
+Those are your application's responsibilities. It only answers one question:
+**is this payment real, and does it match this order?**
+
+## Next
+
+- [Callbacks](/docs/core/callbacks): how to parse and route them.
+- [Persistence](/docs/core/persistence): idempotent fulfillment.
+- [Security](/docs/guides/security): the full threat model.

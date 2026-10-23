@@ -3,7 +3,7 @@ import {
   rsaSha256Verify,
   type RsaPrivateKey,
   type RsaPublicKey,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import { CHECKOUT_TOKEN_FIELDS } from './constants.js'
 
 export interface ConnectIpsValidationTokenInput {

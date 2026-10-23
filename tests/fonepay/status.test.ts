@@ -1,14 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import {
-  isVerifiedPayment,
-  moneyEquals,
-  NepalPaymentsError,
-} from '@nepal-payments/core'
+import { isVerifiedPayment, moneyEquals, NepalPayError } from '@nepal-pay/core'
 import {
   checkFonepayStatus,
   mapFonepayResponseCode,
   mapFonepayVerification,
-} from '@nepal-payments/fonepay'
+} from '@nepal-pay/fonepay'
 import { stubRequest } from '../khalti/helpers.js'
 import { order, testGateway } from './helpers.js'
 
@@ -87,7 +83,7 @@ describe('checkFonepayStatus', () => {
     const error = await capture(() =>
       checkFonepayStatus(gateway.config, { id: 'ORD-123', gateway: 'esewa' })
     )
-    expect((error as NepalPaymentsError).code).toBe('GATEWAY_MISMATCH')
+    expect((error as NepalPayError).code).toBe('GATEWAY_MISMATCH')
   })
 
   it('rejects a malformed PRN', async () => {
@@ -95,7 +91,7 @@ describe('checkFonepayStatus', () => {
     const error = await capture(() =>
       checkFonepayStatus(gateway.config, { id: 'bad id!', gateway: 'fonepay' })
     )
-    expect((error as NepalPaymentsError).code).toBe('INVALID_TXN_REF')
+    expect((error as NepalPayError).code).toBe('INVALID_TXN_REF')
   })
 
   it('requires an expected order to supply the amount', async () => {
@@ -103,6 +99,6 @@ describe('checkFonepayStatus', () => {
     const error = await capture(() =>
       checkFonepayStatus(gateway.config, { id: 'ORD-123', gateway: 'fonepay' })
     )
-    expect((error as NepalPaymentsError).code).toBe('INVALID_AMOUNT')
+    expect((error as NepalPayError).code).toBe('INVALID_AMOUNT')
   })
 })

@@ -1,4 +1,4 @@
-import { VerificationError } from '@nepal-payments/core'
+import { VerificationError } from '@nepal-pay/core'
 import { FONEPAY_MD } from './constants.js'
 import type { ResolvedFonepayConfig } from './types.js'
 

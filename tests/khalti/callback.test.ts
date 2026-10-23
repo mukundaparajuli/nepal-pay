@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError } from '@nepal-payments/core'
+import { PaymentError } from '@nepal-pay/core'
 import { testGateway } from './helpers.js'
 import { COMPLETED_PIDX, COMPLETED_TXN, captureError } from './helpers.js'
 

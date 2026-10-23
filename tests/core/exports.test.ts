@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import * as core from '@nepal-payments/core'
+import * as core from '@nepal-pay/core'
 
 describe('public export surface', () => {
   it('does not expose the payment factory at runtime', () => {
@@ -28,7 +28,7 @@ describe('public export surface', () => {
     expect(typeof core.VerificationError).toBe('function')
     expect(typeof core.ConfigurationError).toBe('function')
     expect(typeof core.MoneyError).toBe('function')
-    expect(typeof core.NepalPaymentsError).toBe('function')
+    expect(typeof core.NepalPayError).toBe('function')
     expect(core.PAYMENT_METHODS).toEqual([
       'esewa',
       'khalti',

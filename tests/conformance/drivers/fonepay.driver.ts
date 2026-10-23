@@ -6,8 +6,8 @@ import {
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
-import { createFonepay, type FonepayConfig } from '@nepal-payments/fonepay'
+} from '@nepal-pay/core'
+import { createFonepay, type FonepayConfig } from '@nepal-pay/fonepay'
 import {
   FIXED_DATE,
   FONEPAY_MERCHANT_CODE,

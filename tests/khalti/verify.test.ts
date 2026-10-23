@@ -3,8 +3,8 @@ import {
   VerificationError,
   moneyFromDecimal,
   type UnverifiedCallback,
-} from '@nepal-payments/core'
-import { isVerifiedPayment } from '@nepal-payments/core'
+} from '@nepal-pay/core'
+import { isVerifiedPayment } from '@nepal-pay/core'
 import {
   COMPLETED_PIDX,
   COMPLETED_TXN,

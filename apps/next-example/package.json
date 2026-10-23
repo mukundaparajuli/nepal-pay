@@ -1,5 +1,5 @@
 {
-  "name": "@nepal-payments/next-example",
+  "name": "@nepal-pay/next-example",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@nepal-payments/core": "workspace:^",
-    "@nepal-payments/mock": "workspace:^",
+    "@nepal-pay/core": "workspace:^",
+    "@nepal-pay/mock": "workspace:^",
     "next": "^16.4.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

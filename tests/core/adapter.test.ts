@@ -15,8 +15,8 @@ import {
   type UnverifiedCallback,
   type VerifyOptions,
   type VerifiedPayment,
-} from '@nepal-payments/core'
-import { createVerifiedPayment } from '@nepal-payments/core/internal'
+} from '@nepal-pay/core'
+import { createVerifiedPayment } from '@nepal-pay/core/internal'
 
 const MOCK_SECRET = 'test-secret'
 const MOCK_GATEWAY: PaymentMethod = 'connectips'

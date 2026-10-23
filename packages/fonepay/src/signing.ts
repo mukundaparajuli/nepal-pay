@@ -1,4 +1,4 @@
-import { hmacSha512, verifyHmacSha512 } from '@nepal-payments/core'
+import { hmacSha512, verifyHmacSha512 } from '@nepal-pay/core'
 import { REQUEST_FIELDS, RESPONSE_FIELDS } from './constants.js'
 
 function stringValue(value: unknown): string {

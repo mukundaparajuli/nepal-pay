@@ -1,0 +1,114 @@
+---
+title: Architecture
+description: How the packages fit together and why the core stays dependency-free.
+---
+
+# Architecture
+
+## Design rules
+
+- **Stateless by default**: no sessions, no database, no hidden state. You
+  persist the order and the `txnRef.id → order.id` mapping.
+- **No framework lock-in**: pure functions and plain objects. `core` depends on
+  no framework. Example apps show Express, Hono, and Next.js.
+- **No floating-point money**: `bigint` minor units.
+- **No gateway-specific logic in core**: each gateway implements the contract
+  in its own package.
+- **Verify before trust**: only `verify()` produces a `VerifiedPayment`.
+- **Web APIs only**: `fetch`, `crypto.subtle`, `TextEncoder`.
+
+## Package graph
+
+```text
+packages/
+├── core/        types, Money, Order, errors, crypto, GatewayAdapter,
+│                reconcile(), PaymentStore
+├── esewa/       eSewa ePay V2 (form POST)
+├── khalti/      Khalti ePayment (REST redirect)
+├── connectips/  connectIPS (form POST + server validation)
+├── fonepay/     Fonepay (GET redirect + HMAC-SHA512 DV)
+├── mock/        in-memory gateway for tests
+└── cli/         the `npay` CLI
+apps/
+├── express-example/
+├── hono-example/
+└── next-example/
+```
+
+Every gateway depends only on `@nepal-pay/core`. connectIPS additionally
+depends on `node-forge` to read PKCS#12 files. `core` has no runtime
+dependencies.
+
+## The lifecycle
+
+```text
+createOrder
+   │
+   ▼
+createCheckout ──► Checkout + TxnRef
+   │
+   ▼
+browser pays at gateway
+   │
+   ▼
+parseCallback ──► UnverifiedCallback
+   │
+   ▼
+verify(callback, { expected: order })
+   │
+   ▼
+VerifiedPayment
+   │
+   ▼
+fulfill (idempotent)
+```
+
+`verify()` checks the gateway tag, signature, order, and amount, then confirms
+with the gateway's status API before sealing. `reconcile()` wraps `status()` in
+bounded retries for callbacks that never arrive.
+
+## Where your code sits
+
+```text
+┌──────────────── your application ────────────────┐
+│  HTTP routes / jobs                              │
+│  ├─ createOrder()                                 │
+│  ├─ gateway.createCheckout()                      │
+│  ├─ gateway.parseCallback()                       │
+│  ├─ gateway.verify()  ← single trust boundary     │
+│  └─ store.savePayment() + fulfillment             │
+│                                                   │
+│  database / queue / secret manager                │
+└───────────────────┬───────────────────────────────┘
+                    │
+        ┌───────────▼───────────┐
+        │ @nepal-pay/core  │
+        │ types · money · errors│
+        └───────────┬───────────┘
+                    │
+     ┌──────────────┼──────────────┬──────────────┐
+     ▼              ▼              ▼              ▼
+   esewa         khalti        connectips      fonepay
+```
+
+## Adding a gateway
+
+1. Implement `GatewayAdapter` using `core` types.
+2. Add the method name to `PAYMENT_METHODS` in core.
+3. Add fixtures and a conformance driver.
+4. Document configuration, callback shape, and status mapping.
+5. Add tests for success, tampering, and status mapping.
+
+The conformance suite runs every gateway through the same lifecycle, so a new
+adapter cannot quietly drift from the contract.
+
+## Why an unbranded core
+
+`VerifiedPayment` is branded with a private symbol. Only the core's verification
+factory can create one. Gateways return it; application code consumes it. This
+makes "did I verify this?" a type-level question instead of a code-review
+question.
+
+The brand is an accident barrier, not a cryptographic proof. It disappears
+through JSON and object spread, which is why persistence uses
+`paymentFromVerified()` and re-verification explicitly.

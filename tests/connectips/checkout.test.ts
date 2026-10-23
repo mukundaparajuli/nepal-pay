@@ -5,7 +5,7 @@ import {
   moneyFromDecimal,
   PaymentError,
   type Order,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   buildCheckoutTokenMessage,
   buildConnectIpsCheckout,
@@ -13,7 +13,7 @@ import {
   resolveConfig,
   type ConnectIpsCheckoutOptions,
   type ConnectIpsFormParams,
-} from '@nepal-payments/connectips'
+} from '@nepal-pay/connectips'
 import {
   FIXED_DATE,
   TEST_APP_ID,

@@ -1,0 +1,172 @@
+---
+title: Overview
+description: A stateless TypeScript SDK for eSewa, Khalti, connectIPS, and Fonepay.
+---
+
+# Payments in Nepal, without the guesswork
+
+Nepali payment gateways look similar from the outside: send the customer to a
+page, wait for them to come back, then decide whether the order is paid. In
+practice, every gateway disagrees about how you sign the request, what the
+callback contains, and how you confirm that the money is real.
+
+This SDK gives all four gateways the same shape:
+
+```text
+create order → create checkout → customer pays → parse callback → verify → fulfill
+```
+
+You learn that lifecycle once. Switching from eSewa to Khalti changes the
+factory you call and one lookup field, not the structure of your application.
+
+## The 60-second mental model
+
+There are three objects and one boundary:
+
+| Object            | What it means                                       | Who creates it      |
+| ----------------- | --------------------------------------------------- | ------------------- |
+| `Order`           | What you are selling and what you expect to be paid | Your server         |
+| `TxnRef`          | The gateway's id for this checkout attempt          | The gateway adapter |
+| `VerifiedPayment` | A payment that passed every security check          | **Only** `verify()` |
+
+The boundary is `verify()`:
+
+```ts
+const payment = await gateway.verify(callback, { expected: order })
+```
+
+Anything before that line is input from the internet. Anything after it is safe
+to fulfill. There is no other supported way to create a `VerifiedPayment`.
+
+## What you actually write
+
+A complete server-side payment flow is small:
+
+```ts
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { createEsewa } from '@nepal-pay/esewa'
+
+const gateway = createEsewa({
+  merchantCode: process.env.ESEWA_MERCHANT_CODE!,
+  secret: process.env.ESEWA_SECRET!,
+  environment: 'sandbox',
+  successUrl: 'https://example.com/payments/success',
+  failureUrl: 'https://example.com/payments/failure',
+})
+
+// 1. Create an order from trusted server-side data.
+const order = createOrder({
+  id: 'ORDER-1001',
+  amount: moneyFromDecimal('100.00'),
+})
+
+// 2. Ask the gateway how to send the customer to it.
+const { checkout, txnRef } = await gateway.createCheckout(order)
+
+// Persist order and txnRef.id -> order.id BEFORE redirecting.
+
+// 3. On the callback route, verify before trusting anything.
+const callback = gateway.parseCallback({ query: req.query })
+const payment = await gateway.verify(callback, { expected: order })
+
+if (payment.status === 'completed') {
+  await fulfillOnce(payment.orderId)
+}
+```
+
+Everything else in these docs explains the details behind those six lines:
+which values are safe to trust, what to persist, how to handle duplicates, and
+what to do when a callback never arrives.
+
+## Design principles
+
+### Stateless by default
+
+The SDK stores nothing. There are no sessions, no database calls, and no hidden
+global state. You persist two things:
+
+1. the order you created, and
+2. the mapping from `txnRef.id` to `order.id`.
+
+That is enough to verify a callback, reconcile a missing payment, and fulfill
+idempotently. This makes the SDK safe in serverless functions, on edge runtimes,
+and in applications that already have their own database.
+
+### Exact money
+
+Amounts are integer minor units stored in a `bigint`:
+
+```ts
+moneyFromDecimal('100.00') // { amount: 10000n, currency: 'NPR', precision: 2 }
+```
+
+There is no floating-point arithmetic anywhere in the money path. `100.10` is
+exactly ten thousand and ten paisa, not `100.09999999999999`.
+
+### Verify before trust
+
+Callbacks and redirects are attacker-controlled. Anyone can open your callback
+URL with any query string. `parseCallback()` only decodes; it never decides that
+a payment is real. `verify()` checks the gateway, signature, order, and amount,
+then asks the gateway's server API to confirm the final state.
+
+### One contract per gateway
+
+`core` has no gateway-specific code. Each provider implements the same
+`GatewayAdapter` interface, and a conformance suite runs every adapter through
+the same lifecycle. Adding a gateway does not change your application's shape.
+
+## Packages
+
+| Package                 | Flow                          | Use it for                                                |
+| ----------------------- | ----------------------------- | --------------------------------------------------------- |
+| `@nepal-pay/core`       | -                             | Types, money, orders, errors, reconciliation, persistence |
+| `@nepal-pay/esewa`      | signed form POST              | eSewa ePay V2                                             |
+| `@nepal-pay/khalti`     | redirect + server lookup      | Khalti ePayment                                           |
+| `@nepal-pay/connectips` | form POST + server validation | NCHL connectIPS                                           |
+| `@nepal-pay/fonepay`    | GET redirect + HMAC-SHA512    | Fonepay                                                   |
+| `@nepal-pay/mock`       | in-memory redirect            | Tests, demos, local development                           |
+| `@nepal-pay/cli`        | -                             | `npay` environment and smoke-test tooling                 |
+
+Install `core` plus only the gateways you use. The mock gateway has no network
+or credential requirements.
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/esewa
+```
+
+## Which gateway should I use?
+
+| If you need…                           | Start with                  |
+| -------------------------------------- | --------------------------- |
+| A wallet with broad consumer reach     | eSewa or Khalti             |
+| Bank-to-merchant payments through NCHL | connectIPS                  |
+| Fonepay QR/merchant network            | Fonepay                     |
+| To build and test without credentials  | [Mock](/docs/gateways/mock) |
+
+You can support several gateways at once. Create one adapter per gateway and
+pick the adapter when the customer chooses a payment method.
+
+## Learning path
+
+1. **[Install](/docs/getting-started/installation)** the packages and set up
+   TypeScript.
+2. **[Run your first payment](/docs/getting-started/first-payment)** with the
+   mock gateway: no accounts, no credentials.
+3. **[Read the quickstart](/docs/getting-started/quickstart)** for the full
+   lifecycle with a real gateway.
+4. **[Wire it into your framework](/docs/getting-started/express)** using
+   Express, Next.js, or Hono.
+5. **[Go live](/docs/guides/go-live)** with the production checklist.
+
+If you only read one more page, read [Verification](/docs/core/verification). It
+explains the security boundary the rest of the SDK is built around.
+
+## Requirements
+
+- **Node.js 20+**
+- Bun and edge runtimes are supported
+- An ESM project or a bundler that understands ESM
+- `pnpm`, npm, yarn, or bun
+
+The SDK needs only Web APIs: `fetch`, `crypto.subtle`, and `TextEncoder`.

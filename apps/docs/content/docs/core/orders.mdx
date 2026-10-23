@@ -1,0 +1,120 @@
+---
+title: Orders
+description: Validate and freeze the merchant-side source of truth.
+---
+
+# Orders
+
+An `Order` is what the customer is buying and what you will compare every
+callback against.
+
+```ts
+interface Order {
+  readonly id: string
+  readonly amount: Money
+  readonly description?: string
+  readonly productName?: string
+  readonly customerName?: string
+  readonly customerEmail?: string
+  readonly customerPhone?: string
+  readonly metadata?: Readonly<Record<string, string>>
+  readonly returnUrl?: string
+  readonly failureUrl?: string
+  readonly callbackUrl?: string
+}
+```
+
+## Create an order
+
+```ts
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+
+const order = createOrder({
+  id: 'ORDER-1001',
+  amount: moneyFromDecimal('100.00'),
+  productName: 'T-shirt',
+  customerName: 'Sita Rai',
+  customerEmail: 'sita@example.com',
+  customerPhone: '9800000000',
+  metadata: { cartId: 'cart-42' },
+  returnUrl: 'https://example.com/payments/success',
+  failureUrl: 'https://example.com/payments/failure',
+})
+```
+
+`createOrder` returns a **frozen** copy. It validates:
+
+| Rule                                                    | Error code         |
+| ------------------------------------------------------- | ------------------ |
+| Order id is a non-empty string of 1–100 safe characters | `INVALID_ORDER_ID` |
+| Amount is a positive `Money`                            | `INVALID_AMOUNT`   |
+| `metadata` is a plain record of string values           | `INVALID_ORDER`    |
+| URLs are valid `http`/`https` URLs                      | `INVALID_URL`      |
+
+## Order id rules
+
+`id` is the value your server will match against the gateway callback. It must
+be unique per checkout attempt and stable in your database.
+
+```ts
+isValidOrderId('ORDER-1001') // true
+isValidOrderId('') // false
+isValidOrderId('a'.repeat(101)) // false
+```
+
+Use uppercase/lowercase letters, digits, hyphens, and underscores. Some gateways
+have stricter limits; the SDK validates against the strictest common set.
+
+## Which URL does the gateway use?
+
+Order-level URLs win over gateway config:
+
+```text
+order.returnUrl  ?? gateway.successUrl
+order.failureUrl ?? gateway.failureUrl
+```
+
+| Gateway    | URL used                     | Where it comes from                         |
+| ---------- | ---------------------------- | ------------------------------------------- |
+| eSewa      | `success_url`, `failure_url` | order `returnUrl`/`failureUrl`, then config |
+| Khalti     | `return_url`                 | order `returnUrl`, then config              |
+| Fonepay    | `RU`                         | order `returnUrl`, then config              |
+| connectIPS | registered with NCHL         | not sent in the form                        |
+
+If neither the order nor the gateway config supplies a required URL,
+`createCheckout` throws `INVALID_URL`.
+
+## Persist before redirecting
+
+Save `order` and the `txnRef.id → order.id` mapping **before** sending the
+customer to the gateway:
+
+```ts
+await db.orders.insert(order)
+const { checkout, txnRef } = await gateway.createCheckout(order)
+await db.transactions.insert({ txnId: txnRef.id, orderId: order.id })
+```
+
+If the callback arrives before your write completes, verification cannot find
+the expected order. Use a transaction or write-ahead record.
+
+## Amount is authoritative
+
+The callback amount is attacker-controlled. Always pass the **stored** order to
+`verify()`:
+
+```ts
+const payment = await gateway.verify(callback, { expected: storedOrder })
+```
+
+A mismatch throws `AMOUNT_MISMATCH` or `ORDER_MISMATCH`.
+
+## Optional fields
+
+- `description`: human-readable line item; not always sent to the gateway.
+- `productName`: used by eSewa and connectIPS.
+- `customerName`, `customerEmail`, `customerPhone`: required by Khalti and used
+  by some other gateways.
+- `metadata`: string-only merchant data; never store secrets here.
+- `callbackUrl`: available for your own routing/mapping; connectIPS callbacks
+  are registered with NCHL, not sent in the form.

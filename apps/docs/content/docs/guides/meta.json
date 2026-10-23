@@ -1,0 +1,11 @@
+{
+  "title": "Guides",
+  "pages": [
+    "cli",
+    "testing",
+    "security",
+    "go-live",
+    "troubleshooting",
+    "architecture"
+  ]
+}

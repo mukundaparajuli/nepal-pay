@@ -4,7 +4,7 @@ import { runInit } from './commands/init.js'
 import { runGatewayTest } from './commands/gateway-test.js'
 import { runFixturesValidate } from './commands/fixtures-validate.js'
 
-export const ROOT_USAGE = `npay — Nepal payments SDK command line
+export const ROOT_USAGE = `npay: Nepal pay SDK command line
 
 Usage: npay <command> [options]
 

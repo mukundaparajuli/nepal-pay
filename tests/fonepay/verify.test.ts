@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   isVerifiedPayment,
   moneyEquals,
-  NepalPaymentsError,
+  NepalPayError,
   type VerifiedPayment,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import { stubRequest } from '../khalti/helpers.js'
 import {
   order,
@@ -48,8 +48,8 @@ describe('verifyFonepayPayment', () => {
     const error = await capture(() =>
       gateway.verify(gateway.parseCallback(raw), { expected: EXPECTED })
     )
-    expect(error).toBeInstanceOf(NepalPaymentsError)
-    expect((error as NepalPaymentsError).code).toBe('AMOUNT_MISMATCH')
+    expect(error).toBeInstanceOf(NepalPayError)
+    expect((error as NepalPayError).code).toBe('AMOUNT_MISMATCH')
   })
 
   it('rejects an order mismatch with ORDER_MISMATCH', async () => {
@@ -58,7 +58,7 @@ describe('verifyFonepayPayment', () => {
     const error = await capture(() =>
       gateway.verify(gateway.parseCallback(raw), { expected: EXPECTED })
     )
-    expect((error as NepalPaymentsError).code).toBe('ORDER_MISMATCH')
+    expect((error as NepalPayError).code).toBe('ORDER_MISMATCH')
   })
 
   it('rejects a merchant code mismatch with ORDER_MISMATCH', async () => {
@@ -67,7 +67,7 @@ describe('verifyFonepayPayment', () => {
     const error = await capture(() =>
       gateway.verify(gateway.parseCallback(raw), { expected: EXPECTED })
     )
-    expect((error as NepalPaymentsError).code).toBe('ORDER_MISMATCH')
+    expect((error as NepalPayError).code).toBe('ORDER_MISMATCH')
   })
 
   it('rejects a broken signature with SIGNATURE_MISMATCH', async () => {
@@ -76,7 +76,7 @@ describe('verifyFonepayPayment', () => {
     const error = await capture(() =>
       gateway.verify(gateway.parseCallback(raw), { expected: EXPECTED })
     )
-    expect((error as NepalPaymentsError).code).toBe('SIGNATURE_MISMATCH')
+    expect((error as NepalPayError).code).toBe('SIGNATURE_MISMATCH')
   })
 
   it('rejects a callback for another gateway', async () => {
@@ -86,7 +86,7 @@ describe('verifyFonepayPayment', () => {
     const error = await capture(() =>
       gateway.verify({ ...parsed, gateway: 'esewa' }, { expected: EXPECTED })
     )
-    expect((error as NepalPaymentsError).code).toBe('GATEWAY_MISMATCH')
+    expect((error as NepalPayError).code).toBe('GATEWAY_MISMATCH')
   })
 
   it('rejects a callback missing PRN', async () => {
@@ -99,7 +99,7 @@ describe('verifyFonepayPayment', () => {
         { expected: EXPECTED }
       )
     )
-    expect((error as NepalPaymentsError).code).toBe('MALFORMED_CALLBACK')
+    expect((error as NepalPayError).code).toBe('MALFORMED_CALLBACK')
   })
 
   it('rejects a callback missing DV', async () => {
@@ -110,7 +110,7 @@ describe('verifyFonepayPayment', () => {
         { expected: EXPECTED }
       )
     )
-    expect((error as NepalPaymentsError).code).toBe('MALFORMED_CALLBACK')
+    expect((error as NepalPayError).code).toBe('MALFORMED_CALLBACK')
   })
 
   it('seals failed for a failed response code', async () => {
@@ -165,6 +165,6 @@ describe('verifyFonepayPayment', () => {
     const error = await capture(() =>
       gateway.verify(gateway.parseCallback(raw), { expected: EXPECTED })
     )
-    expect((error as NepalPaymentsError).code).toBe('INVALID_STATUS')
+    expect((error as NepalPayError).code).toBe('INVALID_STATUS')
   })
 })

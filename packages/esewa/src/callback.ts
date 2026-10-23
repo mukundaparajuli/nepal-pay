@@ -3,7 +3,7 @@ import {
   safeBase64Decode,
   type RawCallbackRequest,
   type UnverifiedCallback,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type { EsewaCallbackPayload } from './types.js'
 
 const REQUIRED_FIELDS = [

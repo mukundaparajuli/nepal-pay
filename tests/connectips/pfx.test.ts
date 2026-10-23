@@ -4,8 +4,8 @@ import {
   importPkcs8PrivateKey,
   rsaSha256Sign,
   PaymentError,
-} from '@nepal-payments/core'
-import { pfxToPkcs8Pem } from '@nepal-payments/connectips/pfx'
+} from '@nepal-pay/core'
+import { pfxToPkcs8Pem } from '@nepal-pay/connectips/pfx'
 import { TEST_PFX_PASSWORD, loadTestPfx } from './helpers.js'
 
 describe('pfxToPkcs8Pem', () => {

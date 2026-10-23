@@ -1,0 +1,253 @@
+---
+title: eSewa
+description: ePay V2 with signed form POST, base64 callbacks, and server-side confirmation.
+---
+
+# eSewa
+
+eSewa is Nepal's most widely used digital wallet. The SDK integrates **ePay V2**,
+which works like this:
+
+```text
+your server signs a form
+        ↓
+browser POSTs the form to eSewa
+        ↓
+customer pays in eSewa
+        ↓
+eSewa redirects to your success URL with ?data=<base64 JSON>
+        ↓
+your server verifies the signature and asks eSewa's status API
+        ↓
+VerifiedPayment
+```
+
+There is no server-to-server call to _start_ a payment. You build a signed form
+and hand it to the browser. The server is involved again only when the callback
+arrives.
+
+## At a glance
+
+|                |                                     |
+| -------------- | ----------------------------------- |
+| Flow           | Signed form POST                    |
+| Checkout type  | `form_post`                         |
+| Callback       | `GET successUrl?data=<base64 JSON>` |
+| Trust anchor   | HMAC-SHA256 signature + status API  |
+| Order id field | `transaction_uuid`                  |
+| Currency       | NPR, 2 decimal places               |
+| Package        | `@nepal-pay/esewa`                  |
+
+## Install
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/esewa
+```
+
+## Get sandbox credentials
+
+From eSewa's merchant panel you need:
+
+- a **product code** (`merchantCode`)
+- a **secret key** (`secret`)
+
+Use `environment: 'sandbox'` with the sandbox product code and secret. The
+adapter selects the correct eSewa endpoint from the environment.
+
+## Configure
+
+```ts
+import { createEsewa } from '@nepal-pay/esewa'
+
+export const esewa = createEsewa({
+  merchantCode: process.env.ESEWA_MERCHANT_CODE!,
+  secret: process.env.ESEWA_SECRET!,
+  environment: 'sandbox', // 'sandbox' | 'production'
+  successUrl: 'https://example.com/payments/esewa/success',
+  failureUrl: 'https://example.com/payments/esewa/failure',
+})
+```
+
+| Option            | Required | Description                                  |
+| ----------------- | -------- | -------------------------------------------- |
+| `merchantCode`    | yes      | eSewa product code, signed as `product_code` |
+| `secret`          | yes      | HMAC secret used to sign and verify          |
+| `environment`     | yes      | `'sandbox'` or `'production'`                |
+| `successUrl`      | no\*     | Fallback for `order.returnUrl`               |
+| `failureUrl`      | no\*     | Fallback for `order.failureUrl`              |
+| `checkoutFormUrl` | no       | Override the form endpoint                   |
+| `statusCheckUrl`  | no       | Override the status endpoint                 |
+| `timeoutMs`       | no       | Status API timeout, default `10000`          |
+| `fetch`           | no       | Custom `fetch` for tests/proxies             |
+
+\* One success and one failure URL are required, from either the config or the
+order. Order-level URLs win.
+
+## Create a checkout
+
+```ts
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { esewa } from './payments.js'
+
+const order = createOrder({
+  id: 'ORDER-1001', // becomes transaction_uuid
+  amount: moneyFromDecimal('100.00'),
+  productName: 'T-shirt',
+})
+
+const { checkout, txnRef } = await esewa.createCheckout(order)
+```
+
+For eSewa, `checkout` is always:
+
+```ts
+{
+  type: 'form_post',
+  url: 'https://rc-epay.esewa.com.np/api/epay/main/v2/form',
+  formParams: {
+    amount,
+    tax_amount,
+    product_service_charge,
+    product_delivery_charge,
+    total_amount,
+    transaction_uuid,
+    product_code,
+    success_url,
+    failure_url,
+    signed_field_names,
+    signature,
+  },
+}
+```
+
+You do not compute the signature. Render the fields as hidden inputs and submit:
+
+```ts
+res.type('html').send(`
+  <form id="pay" method="POST" action="${checkout.url}">
+    ${Object.entries(checkout.formParams)
+      .map(
+        ([name, value]) =>
+          `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`
+      )
+      .join('')}
+  </form>
+  <script>document.getElementById('pay').submit()</script>
+`)
+```
+
+`txnRef.id` is the `transaction_uuid`, which is your order id. Persist
+`txnRef.id → order.id` anyway; it keeps your callback code uniform across
+gateways.
+
+### Surcharges
+
+eSewa separates the base amount from tax and service charges. The SDK subtracts
+surcharges from the order total to produce `amount`, while `total_amount` remains
+the full order amount.
+
+```ts
+await esewa.createCheckout(order, {
+  surcharges: { tax: '13.00', serviceCharge: '5.00' },
+})
+```
+
+Surcharges must be NPR amounts with 2 decimal places.
+
+## Handle the callback
+
+eSewa redirects to your success or failure URL with a single base64 parameter:
+
+```text
+https://example.com/payments/esewa/success?data=eyJ0cmFuc2FjdGlvbl91dWlkIjoi...
+```
+
+```ts
+app.get('/payments/esewa/success', async (req, res) => {
+  const callback = esewa.parseCallback({ query: req.query })
+
+  const orderId = String(callback.data.transaction_uuid ?? '')
+  const order = await db.orders.get(orderId)
+  if (!order) return res.status(404).json({ error: 'UNKNOWN_ORDER' })
+
+  const payment = await esewa.verify(callback, { expected: order })
+  // ...
+})
+```
+
+Pass `req.query` through unchanged. Do not base64-decode and re-encode it; the
+signature is checked over the exact signed fields.
+
+## What `verify()` checks
+
+1. The callback is tagged `esewa`.
+2. The HMAC-SHA256 signature over `signed_field_names` is valid.
+3. `total_amount` equals the expected order amount.
+4. `transaction_uuid` equals the expected order id.
+5. `product_code` equals your configured merchant code.
+6. For a `COMPLETE` callback, eSewa's status API agrees, and `ref_id` matches
+   `transaction_code`.
+
+Only then is a `VerifiedPayment` returned. Any mismatch throws a
+`NepalPayError` with a specific code.
+
+```ts
+const payment = await esewa.verify(callback, { expected: order })
+
+if (payment.status === 'completed') {
+  await fulfillOnce(payment.orderId)
+}
+```
+
+For a completed callback, the sealed `txnRef.id` is eSewa's `transaction_code`,
+not the order id.
+
+## Status lookup
+
+`status()` asks eSewa directly, without a callback:
+
+```ts
+const payment = await esewa.status(txnRef, { expected: order })
+payment.status // 'completed' | 'pending' | 'canceled' | 'unknown'
+```
+
+Use this for reconciliation or when a callback is missing. Passing `expected`
+also verifies the amount and order id.
+
+## Status mapping
+
+| eSewa raw                        | Unified     | Meaning                         |
+| -------------------------------- | ----------- | ------------------------------- |
+| `COMPLETE`                       | `completed` | Paid and confirmed              |
+| `PENDING`                        | `pending`   | Not final                       |
+| `CANCELED`                       | `canceled`  | Customer canceled               |
+| `NOT_FOUND`                      | `unknown`   | eSewa has no such transaction   |
+| `FULL_REFUND` / `PARTIAL_REFUND` | `unknown`   | Refund state; handle separately |
+
+## Sandbox test
+
+1. Set `environment: 'sandbox'` and use your sandbox product code and secret.
+2. Register `https://your-tunnel.example/payments/esewa/success` as the success
+   URL in the eSewa merchant panel.
+3. Start your server and create a checkout.
+4. Pay with eSewa's sandbox test account.
+5. Confirm the callback logs a `completed` verified payment.
+
+Run `npx @nepal-pay/cli gateway test esewa` first to catch missing
+environment variables.
+
+## Pitfalls
+
+| Symptom                         | Cause                                                             | Fix                                                     |
+| ------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| `SIGNATURE_MISMATCH`            | Wrong secret, or the callback was re-encoded                      | Use the configured secret; pass raw `req.query`         |
+| `AMOUNT_MISMATCH`               | Surcharges were added instead of subtracted, or the order changed | Verify against the stored order; check surcharge config |
+| `ORDER_MISMATCH`                | `transaction_uuid` is not your order id, or wrong merchant code   | Use a stable order id and the matching environment      |
+| `UNKNOWN_TRANSACTION`           | Status API does not see the transaction                           | Check environment and whether you queried too early     |
+| Customer sees a blank form page | You returned JSON instead of rendering the form                   | Render `checkout.formParams` as hidden inputs           |
+
+## See also
+
+- [Verification](/docs/core/verification)
+- [Errors](/docs/core/errors)
+- [Troubleshooting](/docs/guides/troubleshooting)

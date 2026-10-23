@@ -1,0 +1,291 @@
+---
+title: Quickstart
+description: Build, redirect, verify, and fulfill a real payment in one server file.
+---
+
+# Quickstart
+
+This page builds the smallest **complete** payment flow: an Express server that
+creates an order, sends the customer to eSewa, verifies the callback, and
+fulfills exactly once.
+
+Read the code first. The explanation follows.
+
+## Prerequisites
+
+- Node.js 20+
+- eSewa sandbox credentials (`merchantCode` and `secret`)
+- A public HTTPS callback URL, or a tunnel such as `ngrok`
+
+```bash
+mkdir payments-demo
+cd payments-demo
+pnpm init
+pnpm add @nepal-pay/core @nepal-pay/esewa express
+pnpm add -D tsx typescript @types/express @types/node
+```
+
+Add `"type": "module"` and a dev script to `package.json`:
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server.ts"
+  }
+}
+```
+
+Set the environment:
+
+```dotenv
+ESEWA_MERCHANT_CODE=EPAYTEST
+ESEWA_SECRET=your-sandbox-secret
+PUBLIC_URL=https://your-tunnel.example
+```
+
+## The whole server
+
+```ts
+import express from 'express'
+import {
+  createOrder,
+  moneyFromDecimal,
+  NepalPayError,
+  type Order,
+} from '@nepal-pay/core'
+import { createEsewa } from '@nepal-pay/esewa'
+
+const app = express()
+app.use(express.json())
+
+const gateway = createEsewa({
+  merchantCode: process.env.ESEWA_MERCHANT_CODE!,
+  secret: process.env.ESEWA_SECRET!,
+  environment: 'sandbox',
+  successUrl: `${process.env.PUBLIC_URL}/payments/success`,
+  failureUrl: `${process.env.PUBLIC_URL}/payments/failure`,
+})
+
+// A real application uses a database. A Map keeps this example honest.
+const orders = new Map<string, Order>()
+const fulfilled = new Set<string>()
+
+app.post('/checkout', async (req, res) => {
+  try {
+    // 1. Build the order on the server. Never trust a client-sent price.
+    const order = createOrder({
+      id: String(req.body.orderId),
+      amount: moneyFromDecimal(String(req.body.amount)),
+      productName: 'T-shirt',
+    })
+    orders.set(order.id, order)
+
+    // 2. Ask the gateway for the checkout payload.
+    const { checkout, txnRef } = await gateway.createCheckout(order)
+
+    // 3. Persist the order BEFORE the customer leaves your site.
+    //    txnRef.id is this gateway's id for this checkout attempt.
+    //    For eSewa it equals order.id; for Khalti it is the pidx.
+    console.log('txnRef', txnRef)
+
+    if (checkout.type === 'redirect') {
+      res.json({ redirectUrl: checkout.url })
+      return
+    }
+
+    // 4. eSewa uses a form POST. Render hidden fields and submit.
+    res.type('html').send(`
+      <form id="pay" method="POST" action="${checkout.url}">
+        ${Object.entries(checkout.formParams)
+          .map(
+            ([name, value]) =>
+              `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`
+          )
+          .join('')}
+      </form>
+      <script>document.getElementById('pay').submit()</script>
+    `)
+  } catch (error) {
+    sendError(res, error)
+  }
+})
+
+app.get('/payments/success', async (req, res) => {
+  try {
+    // 5. The query string is untrusted. parseCallback only decodes it.
+    const callback = gateway.parseCallback({ query: req.query })
+
+    // Find the order this callback refers to. eSewa uses transaction_uuid;
+    // other gateways use different fields (see the table below).
+    const orderId = String(callback.data.transaction_uuid ?? '')
+    const order = orders.get(orderId)
+    if (!order) {
+      res.status(404).json({ error: 'UNKNOWN_ORDER' })
+      return
+    }
+
+    // 6. This is the only line that decides the payment is real.
+    const payment = await gateway.verify(callback, { expected: order })
+
+    // 7. Fulfill once. Gateways retry callbacks; Set is our idempotency guard.
+    if (payment.status === 'completed' && !fulfilled.has(payment.orderId)) {
+      fulfilled.add(payment.orderId)
+      console.log(`Fulfilling ${payment.orderId}`)
+      // await db.markPaid(payment.orderId)
+      // await sendReceipt(payment.orderId)
+    }
+
+    res.json({
+      orderId: payment.orderId,
+      status: payment.status,
+      amount: payment.amount,
+    })
+  } catch (error) {
+    sendError(res, error)
+  }
+})
+
+app.get('/payments/failure', (req, res) => {
+  // A failure redirect is not proof of failure either. Reconcile if needed.
+  res.status(200).send('Payment did not complete')
+})
+
+const port = Number(process.env.PORT ?? 3000)
+app.listen(port, () => console.log(`http://localhost:${port}`))
+
+function sendError(res: express.Response, error: unknown): void {
+  if (error instanceof NepalPayError) {
+    res.status(400).json({ error: error.code, message: error.message })
+    return
+  }
+  console.error(error)
+  res.status(500).json({ error: 'INTERNAL' })
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+```
+
+## Run it
+
+```bash
+pnpm dev
+```
+
+In another terminal, start a checkout:
+
+```bash
+curl -s -X POST localhost:3000/checkout \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"ORDER-1001","amount":"100.00"}'
+```
+
+The response is HTML in a browser. Open it, pay with eSewa's sandbox test
+credentials, and you will land on `/payments/success`.
+
+## What each step is really doing
+
+| Step | Call               | What it guarantees                                          |
+| ---- | ------------------ | ----------------------------------------------------------- |
+| 1    | `createOrder()`    | The amount is positive, exact, and came from your server    |
+| 2    | `createCheckout()` | The gateway request is signed with your secret              |
+| 3    | persist order      | The callback can be compared to what you intended to charge |
+| 4    | render form        | The customer leaves your site with a valid signed request   |
+| 5    | `parseCallback()`  | The payload is decoded, **nothing is trusted**              |
+| 6    | `verify()`         | Signature, order, amount, and server-side status all agree  |
+| 7    | idempotent fulfill | Duplicate callbacks cannot ship twice                       |
+
+## The three rules
+
+### 1. The price comes from the server
+
+```ts
+// WRONG: the client can send amount: '1.00'
+const order = createOrder({
+  id: req.body.orderId,
+  amount: moneyFromDecimal(req.body.amount),
+})
+
+// RIGHT: look up the price you stored when the cart was created
+const cart = await db.carts.get(req.body.cartId)
+const order = createOrder({
+  id: cart.id,
+  amount: cart.total,
+})
+```
+
+The quickstart accepts the amount from the request only to keep the example
+short. In production, the amount must come from your own data.
+
+### 2. Only `verify()` decides a payment is real
+
+The callback's `status`, `total_amount`, and `transaction_uuid` fields are
+attacker-controlled until `verify()` has checked them.
+
+```ts
+// WRONG
+if (callback.data.status === 'COMPLETE') await fulfill(orderId)
+
+// RIGHT
+const payment = await gateway.verify(callback, { expected: order })
+if (payment.status === 'completed') await fulfill(payment.orderId)
+```
+
+### 3. Fulfillment must be idempotent
+
+Gateways retry. Users refresh. Load balancers replay. Record fulfillment by
+order id _before_ doing the side effect, in the same transaction that marks the
+order paid:
+
+```sql
+UPDATE orders SET paid_at = now()
+WHERE id = $1 AND paid_at IS NULL
+RETURNING id;
+```
+
+If zero rows come back, another request already fulfilled it. See
+[Persistence](/docs/core/persistence) for the `PaymentStore` contract.
+
+## Which field identifies the order?
+
+You need this on the callback route:
+
+| Gateway    | Callback field     | `txnRef.id` is                        |
+| ---------- | ------------------ | ------------------------------------- |
+| eSewa      | `transaction_uuid` | `transaction_uuid` (same as order id) |
+| Khalti     | none, use `pidx`   | `pidx`                                |
+| connectIPS | `TXNID`            | `TXNID` (same as order id)            |
+| Fonepay    | `PRN`              | `PRN` (same as order id)              |
+| Mock       | `order_id`         | generated mock id                     |
+
+For Khalti, persist `txnRef.id → order.id` at checkout and look up the order from
+the callback's `pidx`.
+
+## When it fails
+
+| Error code            | Meaning                                                   | Fix                                                                  |
+| --------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| `AMOUNT_MISMATCH`     | Callback amount ≠ stored order amount                     | Verify against the order you saved, not client input                 |
+| `ORDER_MISMATCH`      | Callback order id or merchant code is wrong               | Pass the correct `expected` order; check environment/merchant        |
+| `SIGNATURE_MISMATCH`  | The payload was altered or signed with a different secret | Check the secret and do not re-encode the raw callback               |
+| `UNKNOWN_TRANSACTION` | The gateway's status API does not know the transaction    | Check environment, transaction id, and whether you queried too early |
+| `INVALID_STATUS`      | Callback and status API disagree                          | Do not fulfill; log both payloads and reconcile                      |
+
+The full list is in [Errors](/docs/core/errors).
+
+## Next steps
+
+- [Run the mock version](/docs/getting-started/first-payment): no credentials
+  required, and a safe place to break things.
+- [Express guide](/docs/getting-started/express): a production-shaped server
+  with a dev simulator and tests.
+- [eSewa guide](/docs/gateways/esewa): surcharges, callback shape, and sandbox
+  details.
+- [Verification](/docs/core/verification): the complete trust model.

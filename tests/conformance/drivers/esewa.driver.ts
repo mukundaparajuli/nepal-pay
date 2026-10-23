@@ -6,8 +6,8 @@ import {
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
-import { createEsewa, type EsewaConfig } from '@nepal-payments/esewa'
+} from '@nepal-pay/core'
+import { createEsewa, type EsewaConfig } from '@nepal-pay/esewa'
 import {
   CALLBACK_SFN,
   SANDBOX_PRODUCT_CODE,

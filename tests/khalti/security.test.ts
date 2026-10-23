@@ -4,7 +4,7 @@ import {
   callbackFingerprint,
   isVerifiedPayment,
   type UnverifiedCallback,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   COMPLETED_PIDX,
   COMPLETED_TXN,

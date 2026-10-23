@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError, safeBase64Encode } from '@nepal-payments/core'
-import { signMockCallback } from '@nepal-payments/mock'
+import { PaymentError, safeBase64Encode } from '@nepal-pay/core'
+import { signMockCallback } from '@nepal-pay/mock'
 import { mockGateway, MOCK_SECRET } from './helpers.js'
 
 async function makeData(
@@ -129,7 +129,7 @@ describe('mock parseCallback', () => {
     const raw = { query: { data } }
     const first = gateway.parseCallback(raw)
     const second = gateway.parseCallback(raw)
-    const { callbackFingerprint } = await import('@nepal-payments/core')
+    const { callbackFingerprint } = await import('@nepal-pay/core')
     expect(await callbackFingerprint(first)).toBe(
       await callbackFingerprint(second)
     )

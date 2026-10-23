@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reconcile } from '@nepal-payments/core'
+import { reconcile } from '@nepal-pay/core'
 import { mockGateway, order } from './helpers.js'
 
 describe('reconcile with the mock gateway', () => {

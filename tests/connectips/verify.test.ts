@@ -4,10 +4,10 @@ import {
   isVerifiedPayment,
   moneyEquals,
   moneyFromDecimal,
-  NepalPaymentsError,
+  NepalPayError,
   type Order,
-} from '@nepal-payments/core'
-import { createConnectIps } from '@nepal-payments/connectips'
+} from '@nepal-pay/core'
+import { createConnectIps } from '@nepal-pay/connectips'
 import { stubRequest } from '../khalti/helpers.js'
 import { testConfig } from './helpers.js'
 
@@ -64,8 +64,8 @@ describe('verifyConnectIpsPayment', () => {
     const error = await capture(() =>
       gateway.verify(completedCallback(), { expected: ORDER })
     )
-    expect(error).toBeInstanceOf(NepalPaymentsError)
-    expect((error as NepalPaymentsError).code).toBe('AMOUNT_MISMATCH')
+    expect(error).toBeInstanceOf(NepalPayError)
+    expect((error as NepalPayError).code).toBe('AMOUNT_MISMATCH')
   })
 
   it('rejects an order mismatch before contacting the gateway', async () => {
@@ -74,7 +74,7 @@ describe('verifyConnectIpsPayment', () => {
     const error = await capture(() =>
       gateway.verify(completedCallback('ORD-999'), { expected: ORDER })
     )
-    expect((error as NepalPaymentsError).code).toBe('ORDER_MISMATCH')
+    expect((error as NepalPayError).code).toBe('ORDER_MISMATCH')
     expect(calls).toHaveLength(0)
   })
 
@@ -86,7 +86,7 @@ describe('verifyConnectIpsPayment', () => {
         { expected: ORDER }
       )
     )
-    expect((error as NepalPaymentsError).code).toBe('GATEWAY_MISMATCH')
+    expect((error as NepalPayError).code).toBe('GATEWAY_MISMATCH')
   })
 
   it('rejects a callback missing TXNID', async () => {
@@ -94,7 +94,7 @@ describe('verifyConnectIpsPayment', () => {
     const error = await capture(() =>
       gateway.verify({ gateway: 'connectips', data: {} }, { expected: ORDER })
     )
-    expect((error as NepalPaymentsError).code).toBe('MALFORMED_CALLBACK')
+    expect((error as NepalPayError).code).toBe('MALFORMED_CALLBACK')
   })
 
   it('seals failed when the upstream reports FAILED', async () => {
@@ -128,7 +128,7 @@ describe('verifyConnectIpsPayment', () => {
     const error = await capture(() =>
       gateway.verify(completedCallback(), { expected: ORDER })
     )
-    expect((error as NepalPaymentsError).code).toBe('UNKNOWN_TRANSACTION')
+    expect((error as NepalPayError).code).toBe('UNKNOWN_TRANSACTION')
   })
 
   it('raises INVALID_STATUS for malformed upstream responses', async () => {
@@ -136,6 +136,6 @@ describe('verifyConnectIpsPayment', () => {
     const error = await capture(() =>
       gateway.verify(completedCallback(), { expected: ORDER })
     )
-    expect((error as NepalPaymentsError).code).toBe('INVALID_STATUS')
+    expect((error as NepalPayError).code).toBe('INVALID_STATUS')
   })
 })

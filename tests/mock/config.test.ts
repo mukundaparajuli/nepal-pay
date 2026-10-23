@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ConfigurationError } from '@nepal-payments/core'
-import { createMockGateway, resolveMockConfig } from '@nepal-payments/mock'
+import { ConfigurationError } from '@nepal-pay/core'
+import { createMockGateway, resolveMockConfig } from '@nepal-pay/mock'
 import { MOCK_SECRET } from './helpers.js'
 
 describe('mock config', () => {

@@ -3,7 +3,7 @@ import {
   safeBase64Decode,
   type RawCallbackRequest,
   type UnverifiedCallback,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 const REQUIRED_FIELDS = [
   'txn_id',

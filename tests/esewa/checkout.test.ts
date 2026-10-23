@@ -4,8 +4,8 @@ import {
   PaymentError,
   createMoney,
   moneyFromDecimal,
-} from '@nepal-payments/core'
-import { verifySignedFields } from '@nepal-payments/esewa'
+} from '@nepal-pay/core'
+import { verifySignedFields } from '@nepal-pay/esewa'
 import {
   CHECKOUT_SFN,
   SANDBOX_PRODUCT_CODE,

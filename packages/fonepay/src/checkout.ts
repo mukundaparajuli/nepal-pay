@@ -1,4 +1,4 @@
-import { PaymentError, type Order } from '@nepal-payments/core'
+import { PaymentError, type Order } from '@nepal-pay/core'
 import { DEFAULT_REMARKS_2, FONEPAY_CURRENCY, FONEPAY_MD } from './constants.js'
 import type {
   FonepayCheckout,

@@ -1,9 +1,9 @@
-import { createOrder, moneyFromDecimal, type Order } from '@nepal-payments/core'
+import { createOrder, moneyFromDecimal, type Order } from '@nepal-pay/core'
 import {
   createMockGateway,
   type MockConfig,
   type MockGateway,
-} from '@nepal-payments/mock'
+} from '@nepal-pay/mock'
 
 export const MOCK_SECRET = 'mock-secret-key-123'
 export const MOCK_TXN_ID = 'mock_9f86d081884c7d65'

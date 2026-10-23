@@ -3,11 +3,11 @@ import {
   isVerifiedPayment,
   moneyEquals,
   moneyFromDecimal,
-  NepalPaymentsError,
+  NepalPayError,
   PaymentError,
   VerificationError,
-} from '@nepal-payments/core'
-import type { PaymentMethod, VerifiedPayment } from '@nepal-payments/core'
+} from '@nepal-pay/core'
+import type { PaymentMethod, VerifiedPayment } from '@nepal-pay/core'
 import type { GatewayConformanceDriver } from './driver.js'
 
 async function capture(fn: () => unknown | Promise<unknown>): Promise<unknown> {
@@ -19,8 +19,8 @@ async function capture(fn: () => unknown | Promise<unknown>): Promise<unknown> {
 }
 
 function expectGatewayError(error: unknown, code: string): void {
-  expect(error).toBeInstanceOf(NepalPaymentsError)
-  expect((error as NepalPaymentsError).code).toBe(code)
+  expect(error).toBeInstanceOf(NepalPayError)
+  expect((error as NepalPayError).code).toBe(code)
 }
 
 function isAbortError(error: unknown): boolean {
@@ -325,8 +325,8 @@ export function runGatewayConformanceSuite(
         )
         const outcome = driver.unknownTransaction
         if (outcome.kind === 'throws') {
-          expect(error).toBeInstanceOf(NepalPaymentsError)
-          expect((error as NepalPaymentsError).code).toBe(outcome.code)
+          expect(error).toBeInstanceOf(NepalPayError)
+          expect((error as NepalPayError).code).toBe(outcome.code)
         } else {
           expect(error).not.toBeInstanceOf(Error)
           expect((error as VerifiedPayment).status).toBe(outcome.status)
@@ -344,8 +344,8 @@ export function runGatewayConformanceSuite(
           gateway.verify(callback, { expected: driver.order })
         )
         if (outcome.kind === 'throws') {
-          expect(result).toBeInstanceOf(NepalPaymentsError)
-          expect((result as NepalPaymentsError).code).toBe(outcome.code)
+          expect(result).toBeInstanceOf(NepalPayError)
+          expect((result as NepalPayError).code).toBe(outcome.code)
         } else {
           expect(result).not.toBeInstanceOf(Error)
           expect((result as VerifiedPayment).status).toBe(outcome.status)

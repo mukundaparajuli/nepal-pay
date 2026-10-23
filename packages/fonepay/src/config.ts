@@ -1,4 +1,4 @@
-import { ConfigurationError } from '@nepal-payments/core'
+import { ConfigurationError } from '@nepal-pay/core'
 import type { FonepayConfig, ResolvedFonepayConfig } from './types.js'
 import { REQUEST_URLS, VERIFICATION_URLS } from './constants.js'
 import { isHttpUrl } from './validation.js'

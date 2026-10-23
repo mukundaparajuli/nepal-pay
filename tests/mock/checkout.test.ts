@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError } from '@nepal-payments/core'
+import { PaymentError } from '@nepal-pay/core'
 import { mockGateway, order } from './helpers.js'
 
 describe('mock checkout', () => {

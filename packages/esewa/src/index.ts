@@ -7,7 +7,7 @@ import {
   type UnverifiedCallback,
   type VerifyOptions,
   type VerifiedPayment,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type {
   EsewaConfig,
   EsewaCheckoutOptions,

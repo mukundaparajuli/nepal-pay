@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ConfigurationError } from '@nepal-payments/core'
-import { createKhalti } from '@nepal-payments/khalti'
+import { ConfigurationError } from '@nepal-pay/core'
+import { createKhalti } from '@nepal-pay/khalti'
 import {
   PROD_INITIATE_URL,
   PROD_LOOKUP_URL,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError, isVerifiedPayment } from '@nepal-payments/core'
+import { PaymentError, isVerifiedPayment } from '@nepal-pay/core'
 import {
   CALLBACK_SFN,
   b64,

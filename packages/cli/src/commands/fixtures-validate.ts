@@ -4,7 +4,7 @@ import {
   PAYMENT_STATUSES,
   isPaymentErrorCode,
   isPaymentStatus,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type { CliContext, DirEntry } from '../types.js'
 
 export const FIXTURES_VALIDATE_USAGE = `Usage: npay fixtures validate [dir] [options]

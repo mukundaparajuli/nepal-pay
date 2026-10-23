@@ -1,10 +1,10 @@
 import {
   createOrder,
   moneyFromDecimal,
-  NepalPaymentsError,
+  NepalPayError,
   type GatewayAdapter,
   type Order,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import { getGateway, store, type ExampleStore } from './store'
 
 export interface HandlerResult {
@@ -22,7 +22,7 @@ function defaultDeps(): HandlerDeps {
 }
 
 function errorResult(error: unknown): HandlerResult {
-  if (error instanceof NepalPaymentsError) {
+  if (error instanceof NepalPayError) {
     return {
       status: 400,
       body: { error: error.code ?? 'ERROR', message: error.message },

@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { moneyFromDecimal } from '@nepal-payments/core'
+import { moneyFromDecimal } from '@nepal-pay/core'
 import type {
   GatewayAdapter,
   Order,
   PaymentMethod,
   PaymentStatus,
   UnverifiedCallback,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 declare const gateway: GatewayAdapter
 declare const callback: UnverifiedCallback
@@ -51,7 +51,7 @@ function badGatewayName(): unknown {
 }
 
 // @ts-expect-error VerifiedPaymentInput is internal and not exported from the package root
-type ForbiddenInput = import('@nepal-payments/core').VerifiedPaymentInput
+type ForbiddenInput = import('@nepal-pay/core').VerifiedPaymentInput
 const inputIsNull = (value: ForbiddenInput | null): boolean => value === null
 
 describe('adapter option typing', () => {

@@ -4,8 +4,8 @@ import {
   type Order,
   type UnverifiedCallback,
   type VerifiedPayment,
-} from '@nepal-payments/core'
-import { createVerifiedPayment } from '@nepal-payments/core/internal'
+} from '@nepal-pay/core'
+import { createVerifiedPayment } from '@nepal-pay/core/internal'
 import type { FonepayCallbackPayload, ResolvedFonepayConfig } from './types.js'
 import { fonepayAmountFromMoney, fonepayMoneyFromAmount } from './money.js'
 import { buildResponseMessage, verifyFonepayDv } from './signing.js'

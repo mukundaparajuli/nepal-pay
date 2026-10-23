@@ -6,12 +6,12 @@ import {
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   createMockGateway,
   signMockCallback,
   type MockGateway,
-} from '@nepal-payments/mock'
+} from '@nepal-pay/mock'
 import type { GatewayConformanceDriver, NativeStatusSample } from '../driver.js'
 
 const SECRET = 'conformance-mock-secret'

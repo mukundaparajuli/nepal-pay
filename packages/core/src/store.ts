@@ -117,7 +117,7 @@ export function paymentFromVerified(
 
 /**
  * In-memory {@link PaymentStore} for tests and local development. State is
- * process-local and lost on restart — do not use it in production.
+ * process-local and lost on restart. Do not use it in production.
  */
 export class InMemoryPaymentStore implements PaymentStore {
   private readonly payments = new Map<string, Payment>()

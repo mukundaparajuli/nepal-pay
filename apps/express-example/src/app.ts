@@ -3,12 +3,12 @@ import {
   createOrder,
   isPaymentMethod,
   moneyFromDecimal,
-  NepalPaymentsError,
+  NepalPayError,
   type GatewayAdapter,
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 export interface ExampleStore {
   readonly orders: Map<string, Order>
@@ -35,7 +35,7 @@ interface ErrorResponse {
 }
 
 function toErrorResponse(error: unknown): ErrorResponse {
-  if (error instanceof NepalPaymentsError) {
+  if (error instanceof NepalPayError) {
     return {
       status: 400,
       body: { error: error.code ?? 'ERROR', message: error.message },
@@ -96,7 +96,7 @@ export function createApp(options: CreateAppOptions): Express {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nepal Payments Express Example</title>
+  <title>Nepal Pay Express Example</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 2rem; }
     form, .result { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
@@ -109,7 +109,7 @@ export function createApp(options: CreateAppOptions): Express {
   </style>
 </head>
 <body>
-  <h1>Nepal Payments Express Example</h1>
+  <h1>Nepal Pay Express Example</h1>
   
   <form id="checkoutForm">
     <h2>Create Checkout</h2>

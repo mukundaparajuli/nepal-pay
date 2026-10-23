@@ -1,12 +1,12 @@
 import { parseArgs } from 'node:util'
-import { pfxToPkcs8Pem } from '@nepal-payments/connectips/pfx'
-import { importPkcs8PrivateKey } from '@nepal-payments/core'
+import { pfxToPkcs8Pem } from '@nepal-pay/connectips/pfx'
+import { importPkcs8PrivateKey } from '@nepal-pay/core'
 import type { CliContext } from '../types.js'
 
 export const CONNECTIPS_IMPORT_PFX_USAGE = `Usage: npay connectips import-pfx <pfx> [options]
 
 Convert an NCHL ConnectIPS CREDENTIAL .pfx (PKCS#12) into a PKCS#8 PEM private
-key that @nepal-payments/connectips can load.
+key that @nepal-pay/connectips can load.
 
 Options:
   --out <path>       Output private key path (default: <pfx>.key.pem)

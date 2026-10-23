@@ -5,12 +5,12 @@ import {
   type GatewayAdapter,
   type Order,
   type PaymentMethod,
-} from '@nepal-payments/core'
-import { createEsewa } from '@nepal-payments/esewa'
-import { createKhalti } from '@nepal-payments/khalti'
-import { createConnectIps } from '@nepal-payments/connectips'
-import { createFonepay } from '@nepal-payments/fonepay'
-import { createMockGateway } from '@nepal-payments/mock'
+} from '@nepal-pay/core'
+import { createEsewa } from '@nepal-pay/esewa'
+import { createKhalti } from '@nepal-pay/khalti'
+import { createConnectIps } from '@nepal-pay/connectips'
+import { createFonepay } from '@nepal-pay/fonepay'
+import { createMockGateway } from '@nepal-pay/mock'
 import { GATEWAY_DESCRIPTORS, isGatewayMethod } from '../gateways.js'
 import type { CliContext } from '../types.js'
 

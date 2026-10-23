@@ -1,5 +1,5 @@
 {
-  "name": "@nepal-payments/core",
+  "name": "@nepal-pay/core",
   "version": "0.1.0",
   "description": "Core types and utilities for Nepal payment gateway SDK",
   "keywords": [
@@ -13,13 +13,13 @@
   ],
   "license": "MIT",
   "author": "Mukunda Parajuli <mukundaparajuli13@gmail.com>",
-  "homepage": "https://github.com/mukundaparajuli/nepal-payments#readme",
+  "homepage": "https://github.com/mukundaparajuli/nepal-pay#readme",
   "bugs": {
-    "url": "https://github.com/mukundaparajuli/nepal-payments/issues"
+    "url": "https://github.com/mukundaparajuli/nepal-pay/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mukundaparajuli/nepal-payments.git",
+    "url": "git+https://github.com/mukundaparajuli/nepal-pay.git",
     "directory": "packages/core"
   },
   "type": "module",

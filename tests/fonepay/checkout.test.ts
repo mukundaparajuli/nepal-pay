@@ -4,7 +4,7 @@ import {
   moneyFromDecimal,
   PaymentError,
   type Order,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   buildFonepayCheckout,
   buildRequestMessage,
@@ -12,7 +12,7 @@ import {
   resolveConfig,
   verifyFonepayDv,
   type FonepayCheckoutOptions,
-} from '@nepal-payments/fonepay'
+} from '@nepal-pay/fonepay'
 import {
   FIXED_DATE,
   FONEPAY_MERCHANT_CODE,

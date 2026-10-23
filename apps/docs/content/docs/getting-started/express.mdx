@@ -1,0 +1,392 @@
+---
+title: Express checkout
+description: A production-shaped Express server with verified, idempotent fulfillment.
+---
+
+# Express checkout
+
+This guide builds a small Express application that is structurally the same as a
+production integration:
+
+```text
+POST /checkout           create an order and a gateway checkout
+GET  /payments/callback  decode, verify, fulfill exactly once
+POST /dev/simulate       exercise the callback path without a real gateway
+```
+
+It uses the mock gateway first, then switches to eSewa by changing one factory
+and one lookup field.
+
+## Project setup
+
+```bash
+mkdir payments-server
+cd payments-server
+pnpm init
+pnpm add @nepal-pay/core @nepal-pay/mock express
+pnpm add -D tsx typescript @types/express @types/node
+```
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "test": "vitest"
+  }
+}
+```
+
+The SDK is ESM-only, so `"type": "module"` matters.
+
+## Separate the app from the listener
+
+Testing an Express app that calls `listen()` in the same file is awkward. Split
+it:
+
+```text
+src/
+├── app.ts      createApp(gateway) -> Express app
+├── store.ts    orders, transaction mapping, fulfillment guard
+└── server.ts   reads env, creates the gateway, listens
+```
+
+## The store
+
+The SDK is stateless. Your application owns these three things:
+
+```ts
+// src/store.ts
+import type { Order } from '@nepal-pay/core'
+
+export interface Store {
+  readonly orders: Map<string, Order>
+  readonly txnToOrder: Map<string, string>
+  readonly fulfilled: Set<string>
+}
+
+export function createStore(): Store {
+  return {
+    orders: new Map(),
+    txnToOrder: new Map(),
+    fulfilled: new Set(),
+  }
+}
+```
+
+| State        | Why it exists                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| `orders`     | The amount and order id you will verify against                                                       |
+| `txnToOrder` | Maps the gateway's transaction id (Khalti's `pidx`, eSewa's `transaction_uuid`, …) back to your order |
+| `fulfilled`  | Prevents duplicate callbacks from shipping twice                                                      |
+
+In production, put all three in a database transaction. The in-memory version is
+for the example. See [Persistence](/docs/core/persistence).
+
+## The app
+
+```ts
+// src/app.ts
+import express, { type Response } from 'express'
+import {
+  createOrder,
+  moneyFromDecimal,
+  PaymentError,
+  NepalPayError,
+  type GatewayAdapter,
+  type Order,
+  type UnverifiedCallback,
+} from '@nepal-pay/core'
+import { createStore, type Store } from './store.js'
+
+export function createApp(
+  gateway: GatewayAdapter,
+  store: Store = createStore()
+) {
+  const app = express()
+  app.use(express.json())
+  app.use(express.urlencoded({ extended: false }))
+
+  app.post('/checkout', async (req, res) => {
+    try {
+      const order: Order = createOrder({
+        id: String(req.body.orderId),
+        amount: moneyFromDecimal(String(req.body.amount)),
+        productName: 'T-shirt',
+      })
+
+      store.orders.set(order.id, order)
+
+      const { checkout, txnRef } = await gateway.createCheckout(order)
+
+      // Persist this mapping BEFORE the customer leaves your site.
+      store.txnToOrder.set(txnRef.id, order.id)
+
+      if (checkout.type === 'redirect') {
+        res.json({ checkout, txnRef })
+        return
+      }
+
+      res.type('html').send(renderForm(checkout.url, checkout.formParams))
+    } catch (error) {
+      sendError(res, error)
+    }
+  })
+
+  app.get('/payments/callback', async (req, res) => {
+    try {
+      const callback = gateway.parseCallback({ query: req.query })
+      const payment = await processCallback(gateway, store, callback)
+      res.json({
+        orderId: payment.orderId,
+        status: payment.status,
+      })
+    } catch (error) {
+      sendError(res, error)
+    }
+  })
+
+  // connectIPS posts a form body instead of using a query string.
+  app.post('/payments/callback', async (req, res) => {
+    try {
+      const callback = gateway.parseCallback({
+        query: req.query,
+        body: req.body,
+      })
+      const payment = await processCallback(gateway, store, callback)
+      res.json({
+        orderId: payment.orderId,
+        status: payment.status,
+      })
+    } catch (error) {
+      sendError(res, error)
+    }
+  })
+
+  // DEV ONLY. Remove this route in production.
+  app.post('/dev/simulate', async (req, res) => {
+    try {
+      const gatewayWithControls = gateway as GatewayAdapter & {
+        pay(txnRef: unknown): Promise<unknown>
+        generateCallback(txnRef: unknown): Promise<unknown>
+      }
+      await gatewayWithControls.pay(req.body.txnRef)
+      const raw = await gatewayWithControls.generateCallback(req.body.txnRef)
+      const callback = gateway.parseCallback(raw as never)
+      const payment = await processCallback(gateway, store, callback)
+      res.json({ orderId: payment.orderId, status: payment.status })
+    } catch (error) {
+      sendError(res, error)
+    }
+  })
+
+  return app
+}
+
+async function processCallback(
+  gateway: GatewayAdapter,
+  store: Store,
+  callback: UnverifiedCallback
+) {
+  // 1. Find which checkout this callback belongs to.
+  const txnId = txnIdFromCallback(callback)
+  const orderId = store.txnToOrder.get(txnId)
+  if (orderId === undefined) {
+    throw new PaymentError('Unknown checkout', 'UNKNOWN_TRANSACTION')
+  }
+
+  // 2. The order MUST be the one you stored.
+  const expected = store.orders.get(orderId)
+  if (expected === undefined) {
+    throw new PaymentError('Unknown order', 'ORDER_MISMATCH')
+  }
+
+  // 3. The trust boundary. Throws on signature/order/amount/status mismatch.
+  const payment = await gateway.verify(callback, { expected })
+
+  // 4. Idempotent fulfillment.
+  if (payment.status === 'completed' && !store.fulfilled.has(payment.orderId)) {
+    store.fulfilled.add(payment.orderId)
+    console.log(`Fulfilling ${payment.orderId}`)
+    // await db.orders.markPaid(payment.orderId)
+    // await sendReceipt(payment.orderId)
+  }
+
+  return payment
+}
+
+function txnIdFromCallback(callback: UnverifiedCallback): string {
+  switch (callback.gateway) {
+    case 'mock':
+      return String(callback.data.txn_id ?? '')
+    case 'esewa':
+      return String(callback.data.transaction_uuid ?? '')
+    case 'khalti':
+      return String(callback.data.pidx ?? '')
+    case 'connectips':
+      return String(callback.data.TXNID ?? '')
+    case 'fonepay':
+      return String(callback.data.PRN ?? '')
+  }
+}
+
+function renderForm(url: string, params: Record<string, string>): string {
+  return `
+    <form id="pay" method="POST" action="${escapeHtml(url)}">
+      ${Object.entries(params)
+        .map(
+          ([name, value]) =>
+            `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
+        )
+        .join('')}
+    </form>
+    <script>document.getElementById('pay').submit()</script>
+  `
+}
+
+function sendError(res: Response, error: unknown): void {
+  if (error instanceof NepalPayError) {
+    res.status(400).json({ error: error.code, message: error.message })
+    return
+  }
+  console.error(error)
+  res.status(500).json({ error: 'INTERNAL' })
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+```
+
+## The listener
+
+```ts
+// src/server.ts
+import { createMockGateway } from '@nepal-pay/mock'
+import { createApp } from './app.js'
+
+const gateway = createMockGateway({
+  secretKey: process.env.MOCK_SECRET_KEY ?? 'dev-secret',
+})
+
+const app = createApp(gateway)
+const port = Number(process.env.PORT ?? 3000)
+
+app.listen(port, () => {
+  console.log(`Listening on http://localhost:${port}`)
+})
+```
+
+## Run the flow
+
+```bash
+pnpm dev
+```
+
+Create a checkout:
+
+```bash
+curl -s -X POST localhost:3000/checkout \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"ORDER-2001","amount":"230.00"}'
+```
+
+```json
+{
+  "checkout": {
+    "type": "redirect",
+    "url": "https://mock.invalid/pay/code/mock_e9058e03a24152706c"
+  },
+  "txnRef": { "id": "mock_e9058e03a24152706c", "gateway": "mock" }
+}
+```
+
+Simulate the customer:
+
+```bash
+curl -s -X POST localhost:3000/dev/simulate \
+  -H 'content-type: application/json' \
+  -d '{"txnRef":{"id":"mock_e9058e03a24152706c","gateway":"mock"}}'
+```
+
+```json
+{ "orderId": "ORDER-2001", "status": "completed" }
+```
+
+Run the same command twice. The response is identical, but the server logs
+`Fulfilling ORDER-2001` only once.
+
+## Switching to eSewa
+
+Install the gateway and replace the factory:
+
+```bash
+pnpm add @nepal-pay/esewa
+```
+
+```ts
+import { createEsewa } from '@nepal-pay/esewa'
+
+const gateway = createEsewa({
+  merchantCode: process.env.ESEWA_MERCHANT_CODE!,
+  secret: process.env.ESEWA_SECRET!,
+  environment: 'sandbox',
+  successUrl: `${process.env.PUBLIC_URL}/payments/callback`,
+  failureUrl: `${process.env.PUBLIC_URL}/payments/failure`,
+})
+```
+
+The routes do not change. `txnIdFromCallback` already handles eSewa's
+`transaction_uuid`. eSewa returns a `form_post` checkout, so the checkout route
+renders the auto-submitting form instead of returning a redirect URL.
+
+## Testing the flow
+
+```bash
+pnpm add -D vitest supertest @types/supertest
+```
+
+```ts
+import { describe, expect, it } from 'vitest'
+import request from 'supertest'
+import { createMockGateway } from '@nepal-pay/mock'
+import { createApp } from '../src/app.js'
+import { createStore } from '../src/store.js'
+
+describe('checkout', () => {
+  it('verifies and fulfills exactly once', async () => {
+    const store = createStore()
+    const app = createApp(createMockGateway({ secretKey: 'test' }), store)
+
+    const created = await request(app)
+      .post('/checkout')
+      .send({ orderId: 'ORDER-1', amount: '100.00' })
+      .expect(200)
+
+    const txnRef = created.body.txnRef
+
+    await request(app).post('/dev/simulate').send({ txnRef }).expect(200)
+    await request(app).post('/dev/simulate').send({ txnRef }).expect(200)
+
+    expect(store.fulfilled.size).toBe(1)
+  })
+})
+```
+
+## Things to change before production
+
+- Replace the `Map`s with a database and wrap fulfillment in a transaction.
+- Remove `/dev/simulate`.
+- Validate request bodies with your schema library before calling `createOrder`.
+- Read the price from your database, not from the request body.
+- Log `error.code`, not the raw callback or secret.
+- Add reconciliation for callbacks that never arrive.
+
+The runnable
+[`apps/express-example`](https://github.com/mukundaparajuli/nepal-pay/tree/main/apps/express-example)
+follows the same structure.

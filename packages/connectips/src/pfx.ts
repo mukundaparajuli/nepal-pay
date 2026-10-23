@@ -1,15 +1,15 @@
 import forge from 'node-forge'
-import { PaymentError } from '@nepal-payments/core'
+import { PaymentError } from '@nepal-pay/core'
 
 /**
  * PKCS#12 (`.pfx`/`.p12`) → PKCS#8 conversion.
  *
  * WebCrypto cannot parse PKCS#12 archives, so this module uses `node-forge`.
- * It is Node-only and lives behind the `@nepal-payments/connectips/pfx`
+ * It is Node-only and lives behind the `@nepal-pay/connectips/pfx`
  * subpath so browser bundles never pull in `node-forge`.
  *
  * The emitted private key is PKCS#8 (`-----BEGIN PRIVATE KEY-----`), which
- * `@nepal-payments/core`'s `importPkcs8PrivateKey` accepts directly.
+ * `@nepal-pay/core`'s `importPkcs8PrivateKey` accepts directly.
  */
 
 export interface Pkcs8KeyMaterial {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ConfigurationError } from '@nepal-payments/core'
-import { createConnectIps, resolveConfig } from '@nepal-payments/connectips'
+import { ConfigurationError } from '@nepal-pay/core'
+import { createConnectIps, resolveConfig } from '@nepal-pay/connectips'
 import { testConfig } from './helpers.js'
 
 function capture(fn: () => unknown): unknown {

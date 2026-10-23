@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError } from '@nepal-payments/core'
-import { parseConnectIpsCallback } from '@nepal-payments/connectips'
+import { PaymentError } from '@nepal-pay/core'
+import { parseConnectIpsCallback } from '@nepal-pay/connectips'
 
 function capture(fn: () => unknown): unknown {
   try {

@@ -1,4 +1,4 @@
-import { PAYMENT_METHODS, type PaymentMethod } from '@nepal-payments/core'
+import { PAYMENT_METHODS, type PaymentMethod } from '@nepal-pay/core'
 
 export interface GatewayEnvVar {
   readonly name: string
@@ -17,7 +17,7 @@ export interface GatewayDescriptor {
 
 /**
  * The environment variables the CLI understands for each gateway. The SDK
- * itself never reads the environment — this mapping is only used by `npay init`
+ * itself never reads the environment. This mapping is only used by `npay init`
  * and `npay gateway test`, which build a gateway config from the process env.
  */
 export const GATEWAY_DESCRIPTORS: Record<PaymentMethod, GatewayDescriptor> = {

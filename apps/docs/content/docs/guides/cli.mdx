@@ -1,0 +1,147 @@
+---
+title: CLI
+description: Scaffold environment files, smoke-test gateways, validate fixtures, and convert connectIPS keys.
+---
+
+# `npay` CLI
+
+The `@nepal-pay/cli` package provides the `npay` command for local setup and
+offline checks.
+
+```bash
+pnpm add -D @nepal-pay/cli
+# or run it from the workspace:
+pnpm --filter @nepal-pay/cli exec npay
+```
+
+```text
+npay <command> [options]
+
+Commands:
+  init [options]                Write a .env.example template
+  gateway test [gateway]        Smoke-test a gateway offline
+  fixtures validate [dir]       Validate JSON fixtures/vectors
+  connectips import-pfx <pfx>   Convert a ConnectIPS CREDENTIAL .pfx to PKCS#8
+```
+
+Run `npay <command> --help` for every option.
+
+## `npay init`
+
+Writes an environment template for the gateways you use. It contains
+**placeholders only**: never real secrets.
+
+```bash
+npay init
+npay init --gateways esewa,khalti
+npay init --gateways connectips --out .env.connectips
+npay init --force
+```
+
+| Option              | Description                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `--gateways <list>` | Comma-separated: `esewa`, `khalti`, `connectips`, `fonepay`, `mock`. Default: all four real gateways. |
+| `--out <path>`      | Output path. Default `.env.example`.                                                                  |
+| `--force`           | Overwrite an existing file.                                                                           |
+| `-h`, `--help`      | Show help.                                                                                            |
+
+The generated file documents every variable the CLI understands. Copy it to
+`.env` (never commit it) and fill in credentials.
+
+## `npay gateway test`
+
+Builds the adapter and runs an **offline** lifecycle smoke test. No network
+request is made and no real payment is created.
+
+```bash
+npay gateway test                # mock, full lifecycle
+npay gateway test mock
+npay gateway test esewa          # builds from env vars
+npay gateway test khalti --amount 250.00
+npay gateway test connectips --order-id ORDER-42
+```
+
+| Option               | Description                     |
+| -------------------- | ------------------------------- |
+| `--order-id <id>`    | Order id. Default `NPAY-SMOKE`. |
+| `--amount <decimal>` | Amount. Default `100.00`.       |
+| `-h`, `--help`       | Show help.                      |
+
+For real gateways, missing environment variables are reported. The command
+does not validate live credentials.
+
+Required variables:
+
+```dotenv
+# eSewa
+ESEWA_MERCHANT_CODE=
+ESEWA_SECRET=
+ESEWA_ENVIRONMENT=sandbox
+
+# Khalti
+KHALTI_SECRET_KEY=
+KHALTI_RETURN_URL=
+KHALTI_ENVIRONMENT=sandbox
+
+# connectIPS
+CONNECTIPS_MERCHANT_ID=
+CONNECTIPS_APP_ID=
+CONNECTIPS_APP_NAME=
+CONNECTIPS_PASSWORD=
+CONNECTIPS_PRIVATE_KEY_PATH=
+# or CONNECTIPS_PRIVATE_KEY_PEM=
+CONNECTIPS_ENVIRONMENT=sandbox
+
+# Fonepay
+FONEPAY_PID=
+FONEPAY_SECRET_KEY=
+FONEPAY_RETURN_URL=
+FONEPAY_ENVIRONMENT=sandbox
+```
+
+## `npay fixtures validate`
+
+Recursively parses every JSON fixture and vector under a directory and checks
+that data matches the shapes the test suite expects.
+
+```bash
+npay fixtures validate
+npay fixtures validate tests/vectors
+```
+
+It checks that callback malformed cases carry a known error code, status vectors
+map to known statuses, and amount vectors reference only known error codes. The
+exit code is `1` if any fixture is invalid.
+
+## `npay connectips import-pfx`
+
+Converts an NCHL connectIPS `CREDENTIAL.pfx` (PKCS#12) into a PKCS#8 PEM private
+key that `@nepal-pay/connectips` can load.
+
+```bash
+npay connectips import-pfx ./CREDITOR.pfx --out ./creditor.key.pem
+npay connectips import-pfx ./CREDITOR.pfx --cert-out ./creditor.crt
+NPAY_PFX_PASSWORD='secret' npay connectips import-pfx ./CREDITOR.pfx
+cat password.txt | npay connectips import-pfx ./CREDITOR.pfx --password-stdin
+```
+
+| Option              | Description                                  |
+| ------------------- | -------------------------------------------- |
+| `--out <path>`      | Private key output. Default `<pfx>.key.pem`. |
+| `--cert-out <path>` | Also write the leaf certificate PEM.         |
+| `--password-stdin`  | Read the PFX password from stdin.            |
+| `--force`           | Overwrite an existing output file.           |
+| `-h`, `--help`      | Show help.                                   |
+
+The password is read from `NPAY_PFX_PASSWORD` or stdin. It is **never** accepted
+as a command-line argument, so it does not appear in shell history or process
+listings. The converted key is imported once to verify it is a usable PKCS#8 RSA
+key.
+
+## Exit codes
+
+| Code | Meaning                                      |
+| ---- | -------------------------------------------- |
+| `0`  | Success                                      |
+| `1`  | Validation/config/runtime failure            |
+| `2`  | Usage error (unknown command, bad arguments) |

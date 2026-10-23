@@ -3,8 +3,8 @@ import {
   type PaymentStatus,
   type TxnRef,
   type VerifiedPayment,
-} from '@nepal-payments/core'
-import { createVerifiedPayment } from '@nepal-payments/core/internal'
+} from '@nepal-pay/core'
+import { createVerifiedPayment } from '@nepal-pay/core/internal'
 import type { FonepayStatusOptions, ResolvedFonepayConfig } from './types.js'
 import { fonepayAmountFromMoney } from './money.js'
 import { isValidPrn } from './validation.js'

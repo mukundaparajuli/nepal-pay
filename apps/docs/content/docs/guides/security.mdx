@@ -1,0 +1,202 @@
+---
+title: Security
+description: The threat model, the trust boundary, and a production checklist.
+---
+
+# Security
+
+A payment integration has one job that matters more than any other: **do not
+fulfill an order unless the money is real**. Everything in this page follows from
+that sentence.
+
+## Threat model
+
+Assume an attacker can:
+
+- open your callback URL with any query string or body
+- replay a callback they observed
+- change the amount, order id, or status in a callback
+- choose which order id to send
+- inspect every byte that reaches the browser
+
+Assume they cannot:
+
+- read your server-side environment variables
+- compute a valid signature without your gateway secret
+- make the gateway's server API report a payment that does not exist
+
+The SDK is designed around those assumptions.
+
+| Attack                               | Defense                                            |
+| ------------------------------------ | -------------------------------------------------- |
+| Forge a "success" callback           | Signature verification in `verify()`               |
+| Change the amount to a smaller value | Compare against the **stored** order amount        |
+| Reuse a callback for another order   | Compare order id and merchant code                 |
+| Replay the same callback twice       | Idempotent fulfillment by order id                 |
+| Fake a redirect after canceling      | Server-side status confirmation                    |
+| Read the secret from the browser     | Never import or expose gateway secrets client-side |
+| Guess a transaction id               | Gateway status API lookup + signature validation   |
+
+## The trust boundary
+
+`parseCallback()` is deliberately named `UnverifiedCallback`. It only decodes.
+The callback is still untrusted data.
+
+```ts
+const callback = gateway.parseCallback({ query: req.query })
+// callback.data is attacker-controlled
+
+const payment = await gateway.verify(callback, { expected: order })
+// payment is sealed and safe to act on
+```
+
+Only `verify()` (and `status()`, which uses the same confirmation path) can
+create a `VerifiedPayment`. There is no public constructor and no accepted
+"payment-like" object elsewhere in the API.
+
+> **Never** branch on `callback.data.status`, `callback.data.total_amount`, or a
+> `?success=true` query parameter. Branch on `payment.status` after `verify()`.
+
+## Why each check exists
+
+### Signature
+
+Proves the payload came from the gateway (or someone who knows the shared
+secret). Without it, anyone can invent a payment.
+
+Signatures are compared in constant time. A normal string comparison can leak
+how many leading characters matched, which is enough to forge a signature one
+byte at a time in some threat models.
+
+### Order id
+
+Binds the callback to the order you created. Without it, a valid callback for a
+cheap order could be replayed against an expensive one.
+
+### Amount
+
+Binds the callback to the price you intended to charge. Without it, a customer
+could pay Rs. 1 and receive a Rs. 10,000 order.
+
+Both the order id and amount must come from **your stored data**, never from the
+callback or the client request.
+
+### Server-side confirmation
+
+Some gateways sign a callback that can arrive before the payment is final, or a
+callback that can be replayed. `verify()` asks the gateway's status API (or the
+mock's ledger) for the current state before sealing.
+
+This is why a callback that says `COMPLETE` can still fail verification: the
+gateway's own API disagrees.
+
+## What the `VerifiedPayment` seal is: and is not
+
+`VerifiedPayment` carries a private symbol brand. The object and its nested
+values are frozen, and extra keys from the gateway are dropped.
+
+It protects against **accidents**:
+
+- object spread and shallow copies drop the seal
+- `JSON.parse(JSON.stringify(payment))` drops the seal
+- a plain object literal does not type-check as `VerifiedPayment`
+- mutating a sealed payment throws (or silently fails in non-strict code)
+
+It is **not** a cryptographic proof. In-process code that deliberately extracts
+and copies the symbol can forge one. Treat it as a type-level guardrail, not an
+authorization boundary against malicious code running in your process.
+
+There is also a practical caveat: if two copies of `@nepal-pay/core` are
+loaded (for example a `src` alias and a built `dist`), each has its own symbol.
+Keep one copy of the package at runtime.
+
+## Replay and duplicate handling
+
+Gateways retry callbacks. A malicious user can also replay one they captured.
+Signature verification does not make replay impossible. It makes the replayed
+payload _authentic_. You still need idempotency.
+
+Claim a key before fulfilling:
+
+```ts
+const claimed = await store.acquireIdempotencyKey(payment.orderId)
+if (!claimed) return // already handled
+
+await store.savePayment(paymentFromVerified(payment))
+if (payment.status === 'completed') {
+  await ship(payment.orderId)
+}
+```
+
+`acquireIdempotencyKey` must be atomic across processes. A `Set` in one Node
+process is not enough in production. See [Persistence](/docs/core/persistence).
+
+You can also record `callbackFingerprint(callback)` for audit and duplicate
+detection, but the idempotency key should be the order id (or a stable
+order+transaction pair).
+
+## Secrets
+
+- Keep gateway secrets in server-side environment variables or a secret manager.
+- Never use a `NEXT_PUBLIC_*` or `VITE_*` variable for a secret.
+- Never log the secret, the signature, or the full callback payload.
+- Never commit `.env` files.
+- Rotate credentials if they may have leaked. A leaked signing secret can forge
+  callbacks.
+
+Log the error code, order id, and gateway name. Do not log the raw secret or
+customer data.
+
+## Order validation
+
+Run untrusted input through `createOrder()` before it reaches a gateway:
+
+```ts
+const order = createOrder({
+  id: orderId,
+  amount: moneyFromDecimal(trustedPrice),
+})
+```
+
+It rejects empty/overlong ids, non-positive amounts, bad metadata, and
+non-HTTP(S) URLs. It does not know whether the price is correct; that is your
+database's job.
+
+## Production checklist
+
+### Money
+
+- [ ] Prices come from your database, not the request body.
+- [ ] Every amount uses `moneyFromDecimal` / `createMoney`, never floats.
+- [ ] `verify()` receives the stored order as `expected`.
+- [ ] Fulfillment checks `payment.status === 'completed'`.
+
+### Verification
+
+- [ ] Every callback path goes through `parseCallback()` and `verify()`.
+- [ ] No code branches on `callback.data.status` or a redirect flag.
+- [ ] The callback route does not re-encode or rebuild the raw payload.
+- [ ] Server-side confirmation is enabled for eSewa, Khalti, connectIPS, and
+      Fonepay (`serverVerification` for Fonepay).
+
+### Idempotency
+
+- [ ] Fulfillment is guarded by an atomic idempotency key or a conditional
+      database update.
+- [ ] Duplicate callbacks return success without repeating side effects.
+- [ ] A redeploy does not lose in-flight order state.
+
+### Operations
+
+- [ ] Secrets are server-only and never logged.
+- [ ] Callback URLs are HTTPS and registered with the gateway.
+- [ ] Errors are logged with `NepalPayError.code`.
+- [ ] Reconciliation runs for callbacks that never arrive.
+- [ ] Sandbox has been tested with tampered amount, order, and signature.
+
+## Next
+
+- [Verification](/docs/core/verification): the exact checks.
+- [Errors](/docs/core/errors): what each failure code means.
+- [Go live](/docs/guides/go-live): the deployment checklist.
+- [Troubleshooting](/docs/guides/troubleshooting): diagnosing a failed check.

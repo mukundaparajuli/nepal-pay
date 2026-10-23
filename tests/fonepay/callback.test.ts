@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { PaymentError, type RawCallbackRequest } from '@nepal-payments/core'
-import { createFonepay, parseFonepayCallback } from '@nepal-payments/fonepay'
+import { PaymentError, type RawCallbackRequest } from '@nepal-pay/core'
+import { createFonepay, parseFonepayCallback } from '@nepal-pay/fonepay'
 import {
   FONEPAY_MERCHANT_CODE,
   FONEPAY_SECRET,

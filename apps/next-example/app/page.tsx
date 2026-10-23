@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import type { TxnRef, Checkout } from '@nepal-payments/core'
+import type { TxnRef, Checkout } from '@nepal-pay/core'
 
 type CheckoutResponse = {
   checkout: Checkout
@@ -86,7 +86,7 @@ export default function HomePage(): ReactNode {
         fontFamily: 'system-ui',
       }}
     >
-      <h1>Nepal Payments Next.js example</h1>
+      <h1>Nepal Pay Next.js example</h1>
 
       <form
         onSubmit={handleCheckout}

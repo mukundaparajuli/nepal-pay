@@ -1,4 +1,4 @@
-import { ConfigurationError } from '@nepal-payments/core'
+import { ConfigurationError } from '@nepal-pay/core'
 import type {
   EsewaConfig,
   EsewaEnvironment,

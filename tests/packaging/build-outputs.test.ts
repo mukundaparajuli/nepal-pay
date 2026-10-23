@@ -43,7 +43,7 @@ const built = PACKAGES.every((name) =>
 
 describe.skipIf(!built)('packaging: build outputs', () => {
   for (const name of PACKAGES) {
-    describe(`@nepal-payments/${name}`, () => {
+    describe(`@nepal-pay/${name}`, () => {
       const pkg = readPackageJson(name)
 
       it('declares ESM metadata and exports', () => {

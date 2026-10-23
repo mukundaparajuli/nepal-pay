@@ -3,14 +3,14 @@ import {
   moneyFromDecimal,
   type Order,
   type RawCallbackRequest,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   buildResponseMessage,
   createFonepay,
   generateFonepayDv,
   type FonepayConfig,
   type FonepayGateway,
-} from '@nepal-payments/fonepay'
+} from '@nepal-pay/fonepay'
 
 export const FONEPAY_MERCHANT_CODE = '1234567890'
 export const FONEPAY_SECRET = 'fonepay-test-secret'

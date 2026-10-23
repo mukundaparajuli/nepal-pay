@@ -8,8 +8,8 @@ import {
   isVerifiedPayment,
   type Payment,
   type PaymentStore,
-} from '@nepal-payments/core'
-import { createVerifiedPayment } from '@nepal-payments/core/internal'
+} from '@nepal-pay/core'
+import { createVerifiedPayment } from '@nepal-pay/core/internal'
 
 function verified(status: 'pending' | 'completed' = 'completed') {
   return createVerifiedPayment({

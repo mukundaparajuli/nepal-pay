@@ -1,10 +1,10 @@
-import { createOrder, moneyFromDecimal, type Order } from '@nepal-payments/core'
+import { createOrder, moneyFromDecimal, type Order } from '@nepal-pay/core'
 import {
   createEsewa,
   signFields,
   type EsewaConfig,
   type EsewaGateway,
-} from '@nepal-payments/esewa'
+} from '@nepal-pay/esewa'
 
 export const SANDBOX_SECRET = '8gBm/:&EnhH.1/q'
 export const SANDBOX_PRODUCT_CODE = 'EPAYTEST'

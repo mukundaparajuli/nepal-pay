@@ -1,4 +1,4 @@
-import type { RawCallbackRequest } from '@nepal-payments/core'
+import type { RawCallbackRequest } from '@nepal-pay/core'
 
 export function callbackData(raw: RawCallbackRequest): string {
   const value = raw.query?.data

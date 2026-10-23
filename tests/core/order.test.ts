@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import {
-  createOrder,
-  moneyFromDecimal,
-  PaymentError,
-} from '@nepal-payments/core'
-import type { Order } from '@nepal-payments/core'
+import { createOrder, moneyFromDecimal, PaymentError } from '@nepal-pay/core'
+import type { Order } from '@nepal-pay/core'
 
 describe('Order', () => {
   it('creates order with required fields', () => {

@@ -4,7 +4,7 @@ import {
   buildResponseMessage,
   generateFonepayDv,
   verifyFonepayDv,
-} from '@nepal-payments/fonepay'
+} from '@nepal-pay/fonepay'
 import { FONEPAY_SECRET } from './helpers.js'
 
 const REQUEST_VALUES = {

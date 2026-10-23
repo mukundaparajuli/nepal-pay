@@ -1,0 +1,13 @@
+{
+  "title": "Core concepts",
+  "pages": [
+    "money",
+    "orders",
+    "gateway-contract",
+    "callbacks",
+    "verification",
+    "reconciliation",
+    "persistence",
+    "errors"
+  ]
+}

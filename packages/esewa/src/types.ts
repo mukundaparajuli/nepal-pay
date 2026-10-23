@@ -1,5 +1,5 @@
-import type { Order } from '@nepal-payments/core'
-import type { Money } from '@nepal-payments/core'
+import type { Order } from '@nepal-pay/core'
+import type { Money } from '@nepal-pay/core'
 
 export type EsewaEnvironment = 'sandbox' | 'production'
 

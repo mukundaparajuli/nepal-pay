@@ -5,31 +5,31 @@ import {
   moneyToDecimal,
   PAYMENT_STATUSES,
   PaymentError,
-  type NepalPaymentsError,
-} from '@nepal-payments/core'
+  type NepalPayError,
+} from '@nepal-pay/core'
 import {
   buildSignatureMessage,
   createEsewa,
   mapEsewaStatus,
   signFields,
   verifySignedFields,
-} from '@nepal-payments/esewa'
+} from '@nepal-pay/esewa'
 import {
   createKhalti,
   khaltiPaisaToMoney,
   mapKhaltiStatus,
-} from '@nepal-payments/khalti'
+} from '@nepal-pay/khalti'
 import {
   buildMockSignatureMessage,
   createMockGateway,
   mapMockStatus,
   signMockCallback,
   verifyMockSignature,
-} from '@nepal-payments/mock'
-import type { RawCallbackRequest } from '@nepal-payments/core'
-import * as esewaExports from '@nepal-payments/esewa'
-import * as khaltiExports from '@nepal-payments/khalti'
-import * as mockExports from '@nepal-payments/mock'
+} from '@nepal-pay/mock'
+import type { RawCallbackRequest } from '@nepal-pay/core'
+import * as esewaExports from '@nepal-pay/esewa'
+import * as khaltiExports from '@nepal-pay/khalti'
+import * as mockExports from '@nepal-pay/mock'
 
 import schemes from './signatures/schemes.json'
 import esewaDemoSignatures from './signatures/esewa-demo.json'
@@ -47,7 +47,7 @@ import statusesKhalti from './statuses/khalti.json'
 import statusesMock from './statuses/mock.json'
 
 function codeOf(error: unknown): string | undefined {
-  return (error as NepalPaymentsError)?.code
+  return (error as NepalPayError)?.code
 }
 
 async function capture(fn: () => unknown | Promise<unknown>): Promise<unknown> {
@@ -157,7 +157,7 @@ describe('vectors: mock signature vectors', () => {
 function parseWith(vector: {
   gateway: string
   request: unknown
-}): import('@nepal-payments/core').UnverifiedCallback {
+}): import('@nepal-pay/core').UnverifiedCallback {
   const request = vector.request as unknown as RawCallbackRequest
   if (vector.gateway === 'esewa') {
     return createEsewa({

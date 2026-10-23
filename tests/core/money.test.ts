@@ -17,7 +17,7 @@ import {
   MoneyError,
   type Currency,
   type Money,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 describe('Money (bigint)', () => {
   it('creates money from bigint', () => {

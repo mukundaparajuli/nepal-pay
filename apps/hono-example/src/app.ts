@@ -3,12 +3,12 @@ import {
   createOrder,
   isPaymentMethod,
   moneyFromDecimal,
-  NepalPaymentsError,
+  NepalPayError,
   type GatewayAdapter,
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 export interface ExampleStore {
   readonly orders: Map<string, Order>
@@ -33,7 +33,7 @@ function errorMessage(error: unknown): {
   status: number
   body: Record<string, unknown>
 } {
-  if (error instanceof NepalPaymentsError) {
+  if (error instanceof NepalPayError) {
     return {
       status: 400,
       body: { error: error.code ?? 'ERROR', message: error.message },
@@ -81,7 +81,7 @@ export function createApp(options: CreateAppOptions): Hono {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nepal Payments Hono Example</title>
+  <title>Nepal Pay Hono Example</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 2rem; }
     form, .result { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
@@ -94,7 +94,7 @@ export function createApp(options: CreateAppOptions): Hono {
   </style>
 </head>
 <body>
-  <h1>Nepal Payments Hono Example</h1>
+  <h1>Nepal Pay Hono Example</h1>
   
   <form id="checkoutForm">
     <h2>Create Checkout</h2>

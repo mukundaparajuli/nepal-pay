@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ConfigurationError } from '@nepal-payments/core'
-import { createEsewa, EsewaGateway } from '@nepal-payments/esewa'
+import { ConfigurationError } from '@nepal-pay/core'
+import { createEsewa, EsewaGateway } from '@nepal-pay/esewa'
 import { SANDBOX_PRODUCT_CODE, SANDBOX_SECRET, testGateway } from './helpers.js'
 
 describe('createEsewa configuration', () => {

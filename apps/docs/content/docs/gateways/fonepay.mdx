@@ -1,0 +1,208 @@
+---
+title: Fonepay
+description: Signed GET redirects with HMAC-SHA512 DV verification.
+---
+
+# Fonepay
+
+Fonepay uses a signed redirect. You build a URL, the customer pays, and Fonepay
+redirects back with a `DV` (digital verification) signature. The SDK verifies
+that signature locally and, by default, confirms completed payments against
+Fonepay's merchant verification API.
+
+```text
+your server builds a signed URL
+        ↓
+browser GETs Fonepay
+        ↓
+customer pays
+        ↓
+Fonepay redirects to returnUrl?PRN=…&RC=…&DV=…
+        ↓
+your server verifies DV + amount + order
+        ↓
+optional verificationMerchant confirmation
+        ↓
+VerifiedPayment
+```
+
+## At a glance
+
+|               |                                                 |
+| ------------- | ----------------------------------------------- |
+| Flow          | GET redirect                                    |
+| Checkout type | `redirect`                                      |
+| Callback      | `GET returnUrl?PRN=...&RC=...&DV=...`           |
+| Trust anchor  | HMAC-SHA512 `DV` + optional server verification |
+| Order id      | `PRN` (3–25 chars, no spaces or commas)         |
+| Amount        | 2-decimal NPR string                            |
+| Package       | `@nepal-pay/fonepay`                            |
+
+## Install
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/fonepay
+```
+
+## Get sandbox credentials
+
+From Fonepay you need:
+
+- a merchant code (`PID`)
+- a shared secret (`secretKey`)
+- a registered return URL
+
+## Configure
+
+```ts
+import { createFonepay } from '@nepal-pay/fonepay'
+
+export const fonepay = createFonepay({
+  merchantCode: process.env.FONEPAY_PID!,
+  secretKey: process.env.FONEPAY_SECRET_KEY!,
+  environment: 'sandbox', // 'sandbox' | 'production'
+  returnUrl: 'https://shop.example/payments/fonepay/return',
+  remarks1: 'Order payment',
+  remarks2: 'N/A',
+})
+```
+
+| Option                  | Required | Description                                           |
+| ----------------------- | -------- | ----------------------------------------------------- |
+| `merchantCode`          | yes      | Fonepay merchant code (`PID`)                         |
+| `secretKey`             | yes      | HMAC-SHA512 secret for `DV`                           |
+| `environment`           | yes      | `'sandbox'` or `'production'`                         |
+| `returnUrl`             | no       | Fallback `RU`                                         |
+| `remarks1` / `remarks2` | no       | Fallback `R1` / `R2`; default `R2` is `N/A`           |
+| `serverVerification`    | no       | Call `verificationMerchant` on verify; default `true` |
+| `requestUrl`            | no       | Override the initiation endpoint                      |
+| `verificationUrl`       | no       | Override `verificationMerchant`                       |
+| `timeoutMs`             | no       | Server API timeout, default `10000`                   |
+| `now`                   | no       | Clock override for tests                              |
+| `fetch`                 | no       | Custom `fetch` for tests/proxies                      |
+
+## Create a checkout
+
+```ts
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { fonepay } from './payments.js'
+
+const order = createOrder({
+  id: 'ORDER-1001', // becomes PRN
+  amount: moneyFromDecimal('100.00'),
+  returnUrl: 'https://shop.example/payments/fonepay/return',
+  productName: 'T-shirt',
+})
+
+const { checkout, txnRef } = await fonepay.createCheckout(order)
+
+res.redirect(checkout.url)
+```
+
+`checkout` is a redirect:
+
+```ts
+{
+  type: 'redirect',
+  url: 'https://dev-clientapi.fonepay.com/api/merchantRequest?PID=…&MD=P&PRN=…&AMT=100.00&CRN=NPR&DT=…&R1=…&R2=N/A&RU=…&DV=…',
+}
+```
+
+`AMT` is a 2-decimal NPR string. The adapter scales a precision-0 `Money` to
+2 decimals automatically.
+
+`R1` defaults to the order description (or `Order <id>`), `R2` to `N/A`. Both are
+overridable and may not contain commas:
+
+```ts
+await fonepay.createCheckout(order, { remarks1: 'Invoice #42' })
+```
+
+## Handle the callback
+
+Fonepay appends the signed result to your return URL:
+
+```text
+https://shop.example/payments/fonepay/return?PRN=ORDER-1001&RC=successful&DV=...
+```
+
+```ts
+app.get('/payments/fonepay/return', async (req, res) => {
+  const callback = fonepay.parseCallback({ query: req.query })
+
+  const orderId = String(callback.data.PRN ?? '')
+  const order = await db.orders.get(orderId)
+  if (!order) return res.status(404).json({ error: 'UNKNOWN_ORDER' })
+
+  const payment = await fonepay.verify(callback, { expected: order })
+  // ...
+})
+```
+
+The callback's `RC`, `P_AMT`, and other fields are attacker-controlled until
+`verify()` validates the `DV` over them.
+
+## What `verify()` checks
+
+1. The callback is tagged `fonepay`.
+2. `PRN` and `DV` are present.
+3. The response `DV` matches a locally recomputed HMAC-SHA512, compared in
+   constant time.
+4. `PID` and `PRN` match the configured merchant and expected order.
+5. For a completed callback, `P_AMT` equals the expected amount.
+6. When `serverVerification` is enabled, a completed claim is confirmed against
+   `verificationMerchant`.
+
+```ts
+const payment = await fonepay.verify(callback, { expected: order })
+```
+
+Set `serverVerification: false` only if you intentionally want DV-only
+verification. Server verification is the stronger option and is recommended for
+production.
+
+## Status lookup
+
+```ts
+const payment = await fonepay.status(txnRef, { expected: order })
+payment.status
+```
+
+Fonepay's lookup requires the amount, so `expected` is **mandatory** here.
+Unlike connectIPS, a bare transaction reference is not enough to recover the
+amount.
+
+## Status mapping
+
+| Fonepay                                                  | Unified     | Meaning                       |
+| -------------------------------------------------------- | ----------- | ----------------------------- |
+| `RC=successful` and `PS≠false`                           | `completed` | Paid                          |
+| `RC=failed` or `PS=false`                                | `failed`    | Payment failed                |
+| `RC=cancel`                                              | `canceled`  | Customer canceled             |
+| `verificationMerchant` fails after a successful callback | `failed`    | Server verification disagrees |
+| anything unknown                                         | `unknown`   | Reconcile manually            |
+
+## Sandbox test
+
+1. Set `environment: 'sandbox'` with the sandbox PID and secret.
+2. Register your public return URL with Fonepay.
+3. Create a checkout and complete a sandbox payment.
+4. Confirm the `DV` verifies and the amount matches.
+5. Replay the return URL by hand; the signature should still verify, and your
+   idempotency guard should stop a second fulfillment.
+
+## Pitfalls
+
+| Symptom              | Cause                                           | Fix                                          |
+| -------------------- | ----------------------------------------------- | -------------------------------------------- |
+| `SIGNATURE_MISMATCH` | Wrong secret or a modified query                | Use the shared secret; pass raw query values |
+| `ORDER_MISMATCH`     | `PID` or `PRN` does not match                   | Check environment and order id               |
+| `AMOUNT_MISMATCH`    | `P_AMT` differs from the order                  | Verify against the stored order              |
+| `INVALID_TXN_REF`    | `PRN` uses spaces, commas, or is too short/long | Use 3–25 safe characters                     |
+| Remarks rejected     | `R1`/`R2` contains a comma                      | Remove commas or shorten the values          |
+
+## See also
+
+- [Verification](/docs/core/verification)
+- [Reconciliation](/docs/core/reconciliation)
+- [Troubleshooting](/docs/guides/troubleshooting)

@@ -5,9 +5,9 @@ import {
   VerificationError,
   type RawCallbackRequest,
   type UnverifiedCallback,
-} from '@nepal-payments/core'
-import { signMockCallback } from '@nepal-payments/mock'
-import type { MockGateway } from '@nepal-payments/mock'
+} from '@nepal-pay/core'
+import { signMockCallback } from '@nepal-pay/mock'
+import type { MockGateway } from '@nepal-pay/mock'
 import {
   captureError,
   isAbortError,
@@ -21,7 +21,7 @@ async function verifiedFlow(
   orderOverride = order()
 ): Promise<{
   gateway: MockGateway
-  payment: import('@nepal-payments/core').VerifiedPayment
+  payment: import('@nepal-pay/core').VerifiedPayment
 }> {
   const result = await gateway.createCheckout(orderOverride)
   await gateway.pay(result.txnRef)

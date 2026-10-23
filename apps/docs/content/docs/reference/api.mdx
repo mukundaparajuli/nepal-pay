@@ -1,0 +1,324 @@
+---
+title: API reference
+description: Every public export from @nepal-pay/core.
+---
+
+# API reference
+
+This page lists the public surface of `@nepal-pay/core`. Gateway packages
+export their factories (`createEsewa`, `createKhalti`, `createConnectIps`,
+`createFonepay`, `createMockGateway`) and implement `GatewayAdapter`.
+
+## Constants and guards
+
+```ts
+const PAYMENT_METHODS = [
+  'esewa',
+  'khalti',
+  'connectips',
+  'fonepay',
+  'mock',
+] as const
+
+type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+isPaymentMethod(value: unknown): value is PaymentMethod
+
+const PAYMENT_STATUSES = [
+  'pending',
+  'completed',
+  'failed',
+  'canceled',
+  'expired',
+  'unknown',
+] as const
+
+type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
+isPaymentStatus(value: unknown): value is PaymentStatus
+```
+
+## Money
+
+```ts
+interface Money {
+  readonly amount: bigint
+  readonly currency: 'NPR'
+  readonly precision: number
+}
+
+interface MoneyJSON {
+  readonly amount: string
+  readonly currency: 'NPR'
+  readonly precision: number
+}
+
+createMoney(amount: bigint | number | string, currency?: 'NPR', precision?: number): Money
+moneyFromDecimal(decimal: string, currency?: 'NPR', precision?: number): Money
+moneyToDecimal(money: Money): string
+moneyToJSON(money: Money): MoneyJSON
+moneyFromJSON(json: MoneyJSON): Money
+isMoney(value: unknown): value is Money
+isZero(money: Money): boolean
+isPositive(money: Money): boolean
+isNegative(money: Money): boolean
+
+addMoney(a: Money, b: Money): Money
+subtractMoney(a: Money, b: Money): Money
+multiplyMoney(a: Money, multiplier: bigint | number): Money
+compareMoney(a: Money, b: Money): -1 | 0 | 1
+moneyEquals(a: Money, b: Money): boolean
+```
+
+`createMoney` takes scaled minor units. `moneyFromDecimal` takes a decimal
+string. See [Money](/docs/core/money).
+
+## Order
+
+```ts
+interface Order {
+  readonly id: string
+  readonly amount: Money
+  readonly description?: string
+  readonly productName?: string
+  readonly customerName?: string
+  readonly customerEmail?: string
+  readonly customerPhone?: string
+  readonly metadata?: Readonly<Record<string, string>>
+  readonly returnUrl?: string
+  readonly failureUrl?: string
+  readonly callbackUrl?: string
+}
+
+createOrder(input: Order): Order
+isValidOrderId(orderId: string): boolean
+```
+
+## Checkout and TxnRef
+
+```ts
+type CheckoutType = 'redirect' | 'form_post'
+
+type Checkout =
+  | {
+      readonly type: 'redirect'
+      readonly url: string
+      readonly headers?: Record<string, string>
+    }
+  | {
+      readonly type: 'form_post'
+      readonly url: string
+      readonly formParams: Record<string, string>
+      readonly headers?: Record<string, string>
+    }
+
+interface TxnRef {
+  readonly id: string
+  readonly gateway: PaymentMethod
+}
+
+interface CheckoutResult {
+  readonly checkout: Checkout
+  readonly txnRef: TxnRef
+}
+```
+
+## Gateway adapter
+
+```ts
+interface GatewayAdapter {
+  readonly name: PaymentMethod
+  createCheckout(order: Order): Promise<CheckoutResult>
+  parseCallback(request: RawCallbackRequest): UnverifiedCallback
+  verify(
+    callback: UnverifiedCallback,
+    options: VerifyOptions
+  ): Promise<VerifiedPayment>
+  status(txnRef: TxnRef, options?: StatusOptions): Promise<VerifiedPayment>
+}
+
+interface VerifyOptions {
+  readonly expected: Order
+  readonly [key: string]: unknown
+}
+
+interface StatusOptions {
+  readonly [key: string]: unknown
+}
+```
+
+## Callback
+
+```ts
+interface RawCallbackRequest {
+  readonly body?: unknown
+  readonly query?: Record<string, unknown>
+  readonly headers?: Record<string, string>
+}
+
+interface UnverifiedCallback {
+  readonly gateway: PaymentMethod
+  readonly data: Record<string, unknown>
+  readonly headers?: Record<string, string>
+  readonly body?: unknown
+}
+
+callbackFingerprint(callback: UnverifiedCallback): Promise<string>
+```
+
+## Verified payment
+
+```ts
+interface VerifiedPayment {
+  readonly orderId: string
+  readonly amount: Money
+  readonly status: PaymentStatus
+  readonly txnRef: TxnRef
+  readonly verifiedAt: Date
+  readonly raw?: Record<string, unknown>
+}
+
+isVerifiedPayment(value: unknown): value is VerifiedPayment
+isCompletedPayment(value: unknown): boolean
+```
+
+Only `verify()` and `status()` create a `VerifiedPayment`. See
+[Verification](/docs/core/verification).
+
+## Reconciliation
+
+```ts
+const TERMINAL_PAYMENT_STATUSES = [
+  'completed',
+  'failed',
+  'canceled',
+  'expired',
+] as const
+
+type TerminalPaymentStatus = (typeof TERMINAL_PAYMENT_STATUSES)[number]
+isTerminalPaymentStatus(value: unknown): value is TerminalPaymentStatus
+
+interface PendingPayment {
+  readonly order: Order
+  readonly txnRef: TxnRef
+}
+
+type ReconcileReason = 'terminal' | 'exhausted' | 'timeout' | 'expired'
+
+interface ReconcileOptions {
+  readonly maxAttempts?: number // default 3
+  readonly backoffMs?: number // default 250
+  readonly maxBackoffMs?: number // default 5000
+  readonly timeoutMs?: number // default 10000
+  readonly expiresAt?: Date
+  readonly now?: () => number
+  readonly sleep?: (ms: number) => Promise<void>
+  readonly retryOnError?: boolean
+}
+
+interface ReconcileResult {
+  readonly payment: VerifiedPayment
+  readonly status: PaymentStatus
+  readonly attempts: number
+  readonly resolved: boolean
+  readonly reason: ReconcileReason
+}
+
+reconcile(
+  gateway: GatewayAdapter,
+  payment: PendingPayment,
+  options?: ReconcileOptions
+): Promise<ReconcileResult>
+```
+
+`reconcile()` retries while a payment is non-terminal (`pending` or `unknown`)
+and stops on a terminal status, timeout, expiry, or attempt limit. It performs
+one bounded run and does not schedule itself.
+
+## Persistence
+
+```ts
+interface Payment {
+  readonly orderId: string
+  readonly amount: Money
+  readonly status: PaymentStatus
+  readonly txnRef: TxnRef
+  readonly verifiedAt: Date
+  readonly updatedAt: Date
+  readonly raw?: Record<string, unknown>
+}
+
+interface PaymentStore {
+  getPayment(orderId: string): Promise<Payment | null>
+  savePayment(payment: Payment): Promise<void>
+  acquireIdempotencyKey(key: string): Promise<boolean>
+}
+
+paymentFromVerified(payment: VerifiedPayment, now?: Date): Payment
+createInMemoryPaymentStore(): InMemoryPaymentStore
+
+class InMemoryPaymentStore implements PaymentStore {
+  getPayment(orderId: string): Promise<Payment | null>
+  savePayment(payment: Payment): Promise<void>
+  acquireIdempotencyKey(key: string): Promise<boolean>
+  clear(): void
+}
+```
+
+`paymentFromVerified` rejects anything not sealed by `verify()` with
+`UNVERIFIED_PAYMENT`.
+
+## Crypto
+
+```ts
+constantTimeCompare(a: string, b: string): boolean
+sha256(data: string): Promise<string>
+hmacSha256(data: string, secret: string): Promise<string>
+hmacSha512(data: string, secret: string): Promise<string>
+verifySha256(data: string, expectedHash: string): Promise<boolean>
+verifyHmacSha256(data: string, secret: string, signature: string): Promise<boolean>
+verifyHmacSha512(data: string, secret: string, signature: string): Promise<boolean>
+safeBase64Encode(data: string): string
+safeBase64Decode(encoded: string): string
+base64EncodeBytes(bytes: Uint8Array): string
+base64DecodeBytes(encoded: string): Uint8Array
+```
+
+RSA helpers used by connectIPS:
+
+```ts
+importPkcs8PrivateKey(pem: string): Promise<RsaPrivateKey>
+importSpkiPublicKey(pem: string): Promise<RsaPublicKey>
+rsaSha256Sign(data: string, key: RsaPrivateKey): Promise<string>
+rsaSha256Verify(data: string, signature: string, key: RsaPublicKey): Promise<boolean>
+```
+
+All signature comparisons are constant time. `safeBase64Decode` throws
+`INVALID_BASE64` on malformed input.
+
+## Errors
+
+```ts
+class NepalPayError extends Error {
+  readonly code?: PaymentErrorCode
+  readonly details?: Record<string, unknown>
+}
+class PaymentError extends NepalPayError {}
+class VerificationError extends NepalPayError {}
+class ConfigurationError extends NepalPayError {}
+class MoneyError extends NepalPayError {}
+```
+
+`PAYMENT_ERROR_CODES`, `isPaymentErrorCode()`, and `PAYMENT_STATUSES` are also
+exported. See [Errors](/docs/core/errors) for the full code table.
+
+## Gateway factories
+
+```ts
+import { createEsewa } from '@nepal-pay/esewa'
+import { createKhalti } from '@nepal-pay/khalti'
+import { createConnectIps } from '@nepal-pay/connectips'
+import { createFonepay } from '@nepal-pay/fonepay'
+import { createMockGateway } from '@nepal-pay/mock'
+```
+
+Each factory returns a `GatewayAdapter`. Configure them from the corresponding
+gateway guide.

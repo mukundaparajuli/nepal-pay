@@ -6,8 +6,8 @@ import {
   type Order,
   type RawCallbackRequest,
   type TxnRef,
-} from '@nepal-payments/core'
-import { createKhalti, type KhaltiConfig } from '@nepal-payments/khalti'
+} from '@nepal-pay/core'
+import { createKhalti, type KhaltiConfig } from '@nepal-pay/khalti'
 import { hangingFetch, stubRequest } from '../../khalti/helpers.js'
 import type { GatewayConformanceDriver, NativeStatusSample } from '../driver.js'
 

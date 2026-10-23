@@ -156,7 +156,7 @@ function backoffDelay(
  * Look up the current status of a pending payment, retrying while it is
  * non-terminal (`pending` / `unknown`) or the lookup fails transiently.
  *
- * This performs one bounded run with exponential backoff — it does not
+ * This performs one bounded run with exponential backoff. It does not
  * schedule itself. Wire it to a cron, queue, or background job on your side.
  *
  * Terminal statuses (`completed`, `failed`, `canceled`, `expired`) stop the run

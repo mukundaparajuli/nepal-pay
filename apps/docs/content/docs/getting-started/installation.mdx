@@ -1,0 +1,174 @@
+---
+title: Installation
+description: Choose packages, satisfy the runtime, and keep gateway secrets on the server.
+---
+
+# Installation
+
+The SDK is split by gateway so you only install what you use. `core` contains
+the shared types and utilities. Each gateway package depends on it.
+
+## Requirements
+
+| Requirement               | Why                                                      |
+| ------------------------- | -------------------------------------------------------- |
+| **Node.js 20+**           | The SDK uses the global WebCrypto API and modern `fetch` |
+| **ESM**                   | All packages are ESM-only                                |
+| **Server-side execution** | Gateway secrets must never reach the browser             |
+
+Bun, Deno, Cloudflare Workers, and Next.js edge runtimes work because the SDK
+depends only on Web APIs. connectIPS additionally uses `node-forge` when you
+convert a PKCS#12 key, so that conversion is Node-only.
+
+## Choose packages
+
+```bash
+# Always
+pnpm add @nepal-pay/core
+
+# One or more gateways
+pnpm add @nepal-pay/esewa
+pnpm add @nepal-pay/khalti
+pnpm add @nepal-pay/connectips
+pnpm add @nepal-pay/fonepay
+
+# Tests and local development
+pnpm add -D @nepal-pay/mock
+
+# Optional tooling
+pnpm add -D @nepal-pay/cli
+```
+
+There is no gateway registry and no side-effect import. Importing eSewa does not
+load Khalti or add its dependencies to your bundle.
+
+## TypeScript setup
+
+The packages ship their own declarations. You do not need `@types` packages.
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true
+  }
+}
+```
+
+`strict` is strongly recommended. `VerifiedPayment` is designed to make the
+"did I verify this?" question visible to the type checker.
+
+### ESM checklist
+
+- Set `"type": "module"` in `package.json`, or use a bundler that handles ESM.
+- Use `import`, not `require()`.
+- If you use TypeScript with Node directly, compile to ESM or use `tsx`.
+- Do not import gateway packages into client components. Import them only in
+  server code.
+
+## Environment variables
+
+The SDK never reads `process.env`. Your application reads configuration and
+passes it to the factory. That keeps the SDK testable and lets you use any secret
+manager.
+
+```dotenv
+# eSewa
+ESEWA_MERCHANT_CODE=EPAYTEST
+ESEWA_SECRET=your-secret
+ESEWA_ENVIRONMENT=sandbox
+
+# Khalti
+KHALTI_SECRET_KEY=your-secret-key
+KHALTI_RETURN_URL=https://example.com/payments/khalti/return
+KHALTI_ENVIRONMENT=sandbox
+
+# connectIPS
+CONNECTIPS_MERCHANT_ID=your-merchant-id
+CONNECTIPS_APP_ID=your-app-id
+CONNECTIPS_APP_NAME=your-app-name
+CONNECTIPS_PASSWORD=your-password
+CONNECTIPS_PRIVATE_KEY_PATH=./creditor.key.pem
+CONNECTIPS_ENVIRONMENT=sandbox
+
+# Fonepay
+FONEPAY_PID=your-merchant-code
+FONEPAY_SECRET_KEY=your-secret
+FONEPAY_RETURN_URL=https://example.com/payments/fonepay/return
+FONEPAY_ENVIRONMENT=sandbox
+```
+
+Generate a template with the CLI:
+
+```bash
+npx @nepal-pay/cli init
+npx @nepal-pay/cli init --gateways esewa,khalti
+```
+
+`npay init` writes placeholders only. It never invents or stores secrets.
+
+> **Never ship a gateway secret to the browser.** A "secret" in a
+> `NEXT_PUBLIC_*` variable or a client bundle is public. All signing and
+> verification must happen on the server.
+
+## A minimal configuration module
+
+Create one module that reads the environment and exports configured adapters:
+
+```ts
+// src/payments.ts
+import { createEsewa } from '@nepal-pay/esewa'
+import { createKhalti } from '@nepal-pay/khalti'
+
+export const gateways = {
+  esewa: createEsewa({
+    merchantCode: required('ESEWA_MERCHANT_CODE'),
+    secret: required('ESEWA_SECRET'),
+    environment: environment('ESEWA_ENVIRONMENT'),
+    successUrl: required('ESEWA_SUCCESS_URL'),
+    failureUrl: required('ESEWA_FAILURE_URL'),
+  }),
+  khalti: createKhalti({
+    secretKey: required('KHALTI_SECRET_KEY'),
+    environment: environment('KHALTI_ENVIRONMENT'),
+    returnUrl: required('KHALTI_RETURN_URL'),
+  }),
+}
+
+function required(name: string): string {
+  const value = process.env[name]
+  if (!value) throw new Error(`Missing environment variable: ${name}`)
+  return value
+}
+
+function environment(name: string): 'sandbox' | 'production' {
+  return process.env[name] === 'production' ? 'production' : 'sandbox'
+}
+```
+
+Fail fast on missing configuration. A gateway constructed with an empty secret
+will fail later, in a callback, where the error is harder to diagnose.
+
+## Verify the installation
+
+```bash
+npx @nepal-pay/cli gateway test mock
+```
+
+This runs a complete offline lifecycle and proves the packages are installed and
+importable. For a real gateway, the CLI also builds the adapter from your
+environment and reports missing variables:
+
+```bash
+npx @nepal-pay/cli gateway test esewa
+```
+
+## Next steps
+
+- [Run your first payment](/docs/getting-started/first-payment): no credentials
+  required.
+- [Quickstart](/docs/getting-started/quickstart): the full lifecycle with a real
+  gateway.
+- [Architecture](/docs/guides/architecture): why the SDK is stateless.

@@ -1,5 +1,5 @@
 {
-  "name": "@nepal-payments/hono-example",
+  "name": "@nepal-pay/hono-example",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
-    "@nepal-payments/core": "workspace:^",
+    "@nepal-pay/core": "workspace:^",
     "hono": "^4.13.13"
   },
   "devDependencies": {
-    "@nepal-payments/mock": "workspace:^"
+    "@nepal-pay/mock": "workspace:^"
   }
 }

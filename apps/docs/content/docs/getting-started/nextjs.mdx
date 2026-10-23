@@ -1,0 +1,350 @@
+---
+title: Next.js App Router
+description: Server route handlers, server actions, and the client/server boundary.
+---
+
+# Next.js App Router
+
+Next.js is a good fit for the SDK because route handlers and server actions run
+on the server, where gateway secrets belong. The important rule is simple:
+
+> Gateway adapters and secrets must never be imported into a client component.
+
+This guide uses two route handlers:
+
+```text
+app/api/checkout/route.ts          POST  create an order + checkout
+app/api/payments/callback/route.ts GET   verify + fulfill
+```
+
+## Project setup
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/mock
+```
+
+For a real gateway, add its package (`@nepal-pay/esewa`, etc.) and its
+environment variables. Keep them server-only; do not prefix them with
+`NEXT_PUBLIC_`.
+
+## Keep the logic testable
+
+Put payment logic in a plain TypeScript module. It is easier to unit test and it
+keeps the route handler thin.
+
+```ts
+// src/payments/gateway.ts
+import { createMockGateway, type MockGateway } from '@nepal-pay/mock'
+
+export const gateway: MockGateway = createMockGateway({
+  secretKey: process.env.MOCK_SECRET_KEY ?? 'dev-secret',
+})
+```
+
+```ts
+// src/payments/store.ts
+import type { Order } from '@nepal-pay/core'
+
+export interface Store {
+  orders: Map<string, Order>
+  txnToOrder: Map<string, string>
+  fulfilled: Set<string>
+}
+
+export const store: Store = {
+  orders: new Map(),
+  txnToOrder: new Map(),
+  fulfilled: new Set(),
+}
+```
+
+Use a database in production. In Next.js development, module state can survive
+between requests but is not durable across deploys.
+
+## Checkout route
+
+```ts
+// app/api/checkout/route.ts
+import { createOrder, moneyFromDecimal, NepalPayError } from '@nepal-pay/core'
+import { gateway } from '@/src/payments/gateway'
+import { store } from '@/src/payments/store'
+
+export async function POST(request: Request): Promise<Response> {
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return Response.json({ error: 'INVALID_JSON' }, { status: 400 })
+  }
+
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    typeof (body as { orderId?: unknown }).orderId !== 'string' ||
+    typeof (body as { amount?: unknown }).amount !== 'string'
+  ) {
+    return Response.json(
+      { error: 'INVALID_REQUEST', message: 'orderId and amount are required' },
+      { status: 400 }
+    )
+  }
+
+  const input = body as { orderId: string; amount: string }
+
+  try {
+    // In production, load the amount from your database by orderId.
+    const order = createOrder({
+      id: input.orderId,
+      amount: moneyFromDecimal(input.amount),
+    })
+    store.orders.set(order.id, order)
+
+    const { checkout, txnRef } = await gateway.createCheckout(order)
+    store.txnToOrder.set(txnRef.id, order.id)
+
+    return Response.json({ checkout, txnRef })
+  } catch (error) {
+    if (error instanceof NepalPayError) {
+      return Response.json(
+        { error: error.code, message: error.message },
+        { status: 400 }
+      )
+    }
+    console.error(error)
+    return Response.json({ error: 'INTERNAL' }, { status: 500 })
+  }
+}
+```
+
+## Callback route
+
+```ts
+// app/api/payments/callback/route.ts
+import {
+  PaymentError,
+  NepalPayError,
+  type UnverifiedCallback,
+} from '@nepal-pay/core'
+import { gateway } from '@/src/payments/gateway'
+import { store } from '@/src/payments/store'
+
+export async function GET(request: Request): Promise<Response> {
+  const url = new URL(request.url)
+  const query = Object.fromEntries(url.searchParams.entries())
+
+  try {
+    const callback = gateway.parseCallback({ query })
+    const payment = await processCallback(callback)
+
+    return Response.json({
+      orderId: payment.orderId,
+      status: payment.status,
+    })
+  } catch (error) {
+    if (error instanceof NepalPayError) {
+      return Response.json(
+        { error: error.code, message: error.message },
+        { status: 400 }
+      )
+    }
+    console.error(error)
+    return Response.json({ error: 'INTERNAL' }, { status: 500 })
+  }
+}
+
+// Some gateways POST the callback instead of using a query string.
+export async function POST(request: Request): Promise<Response> {
+  const contentType = request.headers.get('content-type') ?? ''
+  let body: unknown
+
+  if (contentType.includes('application/json')) {
+    body = await request.json().catch(() => undefined)
+  } else if (contentType.includes('application/x-www-form-urlencoded')) {
+    const form = await request.formData().catch(() => undefined)
+    body = form ? Object.fromEntries(form) : undefined
+  }
+
+  try {
+    const url = new URL(request.url)
+    const callback = gateway.parseCallback({
+      query: Object.fromEntries(url.searchParams.entries()),
+      body,
+    })
+    const payment = await processCallback(callback)
+
+    return Response.json({
+      orderId: payment.orderId,
+      status: payment.status,
+    })
+  } catch (error) {
+    if (error instanceof NepalPayError) {
+      return Response.json(
+        { error: error.code, message: error.message },
+        { status: 400 }
+      )
+    }
+    console.error(error)
+    return Response.json({ error: 'INTERNAL' }, { status: 500 })
+  }
+}
+
+async function processCallback(callback: UnverifiedCallback) {
+  const txnId = txnIdFromCallback(callback)
+  const orderId = store.txnToOrder.get(txnId)
+  if (orderId === undefined) {
+    throw new PaymentError('Unknown checkout', 'UNKNOWN_TRANSACTION')
+  }
+
+  const expected = store.orders.get(orderId)
+  if (expected === undefined) {
+    throw new PaymentError('Unknown order', 'ORDER_MISMATCH')
+  }
+
+  const payment = await gateway.verify(callback, { expected })
+
+  if (payment.status === 'completed' && !store.fulfilled.has(payment.orderId)) {
+    store.fulfilled.add(payment.orderId)
+    // await db.orders.markPaid(payment.orderId)
+  }
+
+  return payment
+}
+
+function txnIdFromCallback(callback: UnverifiedCallback): string {
+  switch (callback.gateway) {
+    case 'mock':
+      return String(callback.data.txn_id ?? '')
+    case 'esewa':
+      return String(callback.data.transaction_uuid ?? '')
+    case 'khalti':
+      return String(callback.data.pidx ?? '')
+    case 'connectips':
+      return String(callback.data.TXNID ?? '')
+    case 'fonepay':
+      return String(callback.data.PRN ?? '')
+  }
+}
+```
+
+## Rendering a form POST checkout
+
+eSewa and connectIPS return `checkout.type === 'form_post'`. A server component
+can render the form, but the auto-submit script is client-side.
+
+```tsx
+// components/gateway-form.tsx
+import type { Checkout } from '@nepal-pay/core'
+
+export function GatewayForm({
+  checkout,
+}: {
+  checkout: Extract<Checkout, { type: 'form_post' }>
+}) {
+  return (
+    <>
+      <form id="gateway-form" method="POST" action={checkout.url}>
+        {Object.entries(checkout.formParams).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
+      </form>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.getElementById('gateway-form').submit()`,
+        }}
+      />
+    </>
+  )
+}
+```
+
+`checkout.url` comes from the adapter, not from user input. Still, do not inject
+form parameters into raw HTML.
+
+## Server actions
+
+A server action is a public HTTP endpoint. Treat its input exactly like a route
+handler's input.
+
+```ts
+'use server'
+
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { redirect } from 'next/navigation'
+import { gateway } from '@/src/payments/gateway'
+import { store } from '@/src/payments/store'
+
+export async function startCheckout(formData: FormData) {
+  const order = createOrder({
+    id: String(formData.get('orderId')),
+    amount: moneyFromDecimal(String(formData.get('price'))), // from your DB
+  })
+  store.orders.set(order.id, order)
+
+  const { checkout, txnRef } = await gateway.createCheckout(order)
+  store.txnToOrder.set(txnRef.id, order.id)
+
+  if (checkout.type === 'redirect') {
+    redirect(checkout.url)
+  }
+
+  // For form_post, render a page that contains <GatewayForm checkout={checkout} />.
+  redirect(`/pay/${order.id}`)
+}
+```
+
+## Client-side boundary
+
+Use a client component for the button that calls the checkout route:
+
+```tsx
+'use client'
+
+export function PayButton({
+  orderId,
+  amount,
+}: {
+  orderId: string
+  amount: string
+}) {
+  async function start() {
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ orderId, amount }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.message ?? result.error)
+
+    if (result.checkout.type === 'redirect') {
+      window.location.assign(result.checkout.url)
+    } else {
+      window.location.assign(`/pay/${orderId}`)
+    }
+  }
+
+  return <button onClick={start}>Pay NPR {amount}</button>
+}
+```
+
+The client sends the order id, never the secret. The server decides the price.
+
+## Static export and edge runtimes
+
+- The SDK works in the Node.js runtime and on edge runtimes.
+- connectIPS needs `node-forge` only for PFX conversion; do that at build time or
+  in a Node.js deployment, not in an edge function.
+- If you use `output: 'export'`, your app has no server routes. Keep payment
+  handlers in a separate server app or a host that supports server functions.
+
+## Debugging checklist
+
+| Symptom                                      | Likely cause                                                                   |
+| -------------------------------------------- | ------------------------------------------------------------------------------ |
+| `Module not found: Can't resolve 'node:...'` | A Node-only module was imported into a client or edge bundle                   |
+| `route.ts` returns 500 with no log           | The gateway factory is misconfigured; check env before `createOrder`           |
+| Callback returns `UNKNOWN_CHECKOUT`          | `txnToOrder` was lost (in-memory store across workers) or never persisted      |
+| Callback works once, then fails              | You removed the order after fulfillment; keep enough data to recognize replays |
+
+See the runnable
+[`apps/next-example`](https://github.com/mukundaparajuli/nepal-pay/tree/main/apps/next-example)
+for a complete mock-powered App Router example.

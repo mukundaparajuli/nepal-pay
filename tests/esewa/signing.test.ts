@@ -4,7 +4,7 @@ import {
   signFields,
   verifySignedFields,
   decodeRawJsonTokens,
-} from '@nepal-payments/esewa'
+} from '@nepal-pay/esewa'
 import { SANDBOX_SECRET } from './helpers.js'
 
 describe('eSewa signing', () => {

@@ -35,7 +35,7 @@ export function isPaymentErrorCode(value: unknown): value is PaymentErrorCode {
   )
 }
 
-export class NepalPaymentsError extends Error {
+export class NepalPayError extends Error {
   constructor(
     message: string,
     public readonly code?: PaymentErrorCode,
@@ -45,28 +45,28 @@ export class NepalPaymentsError extends Error {
   }
 }
 
-export class PaymentError extends NepalPaymentsError {
+export class PaymentError extends NepalPayError {
   constructor(message: string, code?: PaymentErrorCode, details?: unknown) {
     super(message, code, details)
     this.name = 'PaymentError'
   }
 }
 
-export class VerificationError extends NepalPaymentsError {
+export class VerificationError extends NepalPayError {
   constructor(message: string, code?: PaymentErrorCode, details?: unknown) {
     super(message, code, details)
     this.name = 'VerificationError'
   }
 }
 
-export class ConfigurationError extends NepalPaymentsError {
+export class ConfigurationError extends NepalPayError {
   constructor(message: string, code?: PaymentErrorCode, details?: unknown) {
     super(message, code, details)
     this.name = 'ConfigurationError'
   }
 }
 
-export class MoneyError extends NepalPaymentsError {
+export class MoneyError extends NepalPayError {
   constructor(message: string, code?: PaymentErrorCode, details?: unknown) {
     super(message, code, details)
     this.name = 'MoneyError'

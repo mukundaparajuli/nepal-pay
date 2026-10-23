@@ -3,8 +3,8 @@ import {
   VerificationError,
   callbackFingerprint,
   isVerifiedPayment,
-} from '@nepal-payments/core'
-import type { UnverifiedCallback } from '@nepal-payments/core'
+} from '@nepal-pay/core'
+import type { UnverifiedCallback } from '@nepal-pay/core'
 import {
   SERVER_COMPLETE,
   SANDBOX_SECRET,

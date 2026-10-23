@@ -29,7 +29,7 @@ async function bundleInputs(gateway: string): Promise<string[]> {
 
 describe.skipIf(!built)('packaging: tree-shaking', () => {
   for (const gateway of GATEWAYS) {
-    it(`importing @nepal-payments/${gateway} excludes other gateways`, async () => {
+    it(`importing @nepal-pay/${gateway} excludes other gateways`, async () => {
       const inputs = await bundleInputs(gateway)
       const joined = inputs.join('\n')
 

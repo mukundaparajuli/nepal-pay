@@ -1,4 +1,4 @@
-import { createMockGateway } from '@nepal-payments/mock'
+import { createMockGateway } from '@nepal-pay/mock'
 import { createApp } from './app.ts'
 
 const gateway = createMockGateway({

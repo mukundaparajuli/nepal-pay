@@ -7,7 +7,7 @@ import type {
   PaymentStatus,
   RawCallbackRequest,
   TxnRef,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 /**
  * A status-disagreement expectation: the callback claims completed but the

@@ -1,14 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import {
-  importPkcs8PrivateKey,
-  importSpkiPublicKey,
-} from '@nepal-payments/core'
+import { importPkcs8PrivateKey, importSpkiPublicKey } from '@nepal-pay/core'
 import {
   buildCheckoutTokenMessage,
   buildValidationTokenMessage,
   signConnectIpsToken,
   verifyConnectIpsToken,
-} from '@nepal-payments/connectips'
+} from '@nepal-pay/connectips'
 import {
   testPrivateKeyPem,
   testPublicKeyPem,

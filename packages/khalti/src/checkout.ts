@@ -1,4 +1,4 @@
-import { PaymentError, type Order } from '@nepal-payments/core'
+import { PaymentError, type Order } from '@nepal-pay/core'
 import type {
   KhaltiCheckoutOptions,
   KhaltiInitiateRequest,

@@ -3,7 +3,7 @@ import {
   VerificationError,
   type Money,
   type PaymentStatus,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type { ResolvedEsewaConfig } from './types.js'
 
 const STATUS_MAP: Readonly<Record<string, PaymentStatus>> = {

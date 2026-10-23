@@ -2,7 +2,7 @@ import {
   PaymentError,
   type RawCallbackRequest,
   type UnverifiedCallback,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type { KhaltiCallbackPayload } from './types.js'
 
 function collectQueryParams(

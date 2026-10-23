@@ -1,5 +1,5 @@
-import type { Order } from '@nepal-payments/core'
-import { createMockGateway, type MockGateway } from '@nepal-payments/mock'
+import type { Order } from '@nepal-pay/core'
+import { createMockGateway, type MockGateway } from '@nepal-pay/mock'
 
 export const EXAMPLE_MOCK_SECRET = 'next-example-dev-secret'
 

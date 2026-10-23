@@ -1,0 +1,253 @@
+---
+title: Testing
+description: Test the happy path, the security boundary, and the callback that never comes.
+---
+
+# Testing
+
+A payment integration has two kinds of tests:
+
+1. **Does it work?** The customer pays and the order is fulfilled once.
+2. **Does it fail safely?** A forged, duplicated, delayed, or missing callback
+   does not ship an unpaid order.
+
+The mock gateway exists so you can test both without credentials or a network.
+
+## What to test
+
+| Area        | Cases                                                          |
+| ----------- | -------------------------------------------------------------- |
+| Money       | Decimal parsing, precision, rounding rejection, large amounts  |
+| Order       | Invalid id, zero/negative amount, bad URLs, metadata           |
+| Checkout    | Redirect vs form POST, required URLs, required customer fields |
+| Signature   | Valid, tampered, missing, wrong secret                         |
+| Binding     | Wrong order id, wrong amount, wrong merchant                   |
+| Status      | Pending → completed, failed, canceled, expired, unknown        |
+| Idempotency | Duplicate callbacks fulfill once                               |
+| Recovery    | No callback → `reconcile()` resolves it                        |
+| Errors      | Each `NepalPayError.code` maps to the right response           |
+
+## Test pyramid
+
+```text
+many   unit tests          money, order, adapters with injected fetch
+       contract tests      every gateway passes the conformance suite
+       route tests         checkout + callback handlers
+few    sandbox tests       one real payment per gateway before release
+```
+
+Do not use a real gateway in unit tests. Inject `fetch` or use the mock.
+
+## Commands in this repo
+
+```bash
+pnpm test          # vitest: unit, gateway, conformance, framework
+pnpm test:watch
+pnpm test:coverage
+pnpm test:bun      # runs the Hono example on the Bun runtime
+```
+
+## The mock gateway
+
+`@nepal-pay/mock` is a fully in-memory `GatewayAdapter` with deterministic
+controls. It supports the same lifecycle plus helpers to simulate the customer
+and the gateway.
+
+```ts
+import { createMockGateway } from '@nepal-pay/mock'
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+
+const gateway = createMockGateway({ secretKey: 'test-secret' })
+
+const order = createOrder({ id: 'ORDER-1', amount: moneyFromDecimal('100.00') })
+const { checkout, txnRef } = await gateway.createCheckout(order)
+
+await gateway.pay(txnRef)
+const raw = await gateway.generateCallback(txnRef)
+const callback = gateway.parseCallback({ query: raw.query })
+const payment = await gateway.verify(callback, { expected: order })
+
+expect(payment.status).toBe('completed')
+```
+
+### Scenarios
+
+| Scenario            | What happens                             | Use it to test         |
+| ------------------- | ---------------------------------------- | ---------------------- |
+| `success`           | `pay()` → `completed`                    | The happy path         |
+| `pending`           | `pay()` → `pending`; `settle()` later    | Polling/reconciliation |
+| `failed`            | `pay()` → `failed`                       | Declined payments      |
+| `expired`           | Checkout starts expired                  | Expired sessions       |
+| `abandoned`         | No callback; `generateCallback()` throws | Missing callbacks      |
+| `delayed`           | Callback waits `delayMs`                 | Timeouts               |
+| `duplicate`         | Callback can be emitted repeatedly       | Idempotency            |
+| `timeout`           | `verify()` / `status()` abort            | Timeout handling       |
+| `invalid-signature` | Callback signature is forged             | Signature rejection    |
+
+### Controls
+
+```ts
+await gateway.pay(txnRef) // simulate payment per scenario
+await gateway.settle(txnRef) // pending → completed
+await gateway.expire(txnRef) // initiated/pending → expired
+await gateway.setStatus(txnRef, 'canceled') // force a state
+const raw = await gateway.generateCallback(txnRef)
+```
+
+`gateway.ledger` exposes every entry for assertions.
+
+### Callback format
+
+The mock callback is `?data=<base64 JSON>` containing
+`{ txn_id, order_id, amount, status, signature }`. The signature is HMAC-SHA256
+over the fields using `secretKey`. Helpers `signMockCallback` and
+`safeBase64Encode` are exported for building tampered cases.
+
+## Testing the security boundary
+
+These are the tests that matter most. Each one should assert on the error
+**code**, not the message.
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { createMockGateway } from '@nepal-pay/mock'
+
+async function paidCallback(
+  gateway: ReturnType<typeof createMockGateway>,
+  order: ReturnType<typeof createOrder>
+) {
+  const { txnRef } = await gateway.createCheckout(order)
+  await gateway.pay(txnRef)
+  return gateway.parseCallback(await gateway.generateCallback(txnRef))
+}
+
+describe('verification', () => {
+  it('rejects a forged signature', async () => {
+    const gateway = createMockGateway({
+      secretKey: 'test',
+      scenario: 'invalid-signature',
+    })
+    const order = createOrder({
+      id: 'ORDER-1',
+      amount: moneyFromDecimal('100.00'),
+    })
+    const callback = await paidCallback(gateway, order)
+
+    await expect(
+      gateway.verify(callback, { expected: order })
+    ).rejects.toMatchObject({ code: 'SIGNATURE_MISMATCH' })
+  })
+
+  it('rejects a different amount', async () => {
+    const gateway = createMockGateway({ secretKey: 'test' })
+    const order = createOrder({
+      id: 'ORDER-2',
+      amount: moneyFromDecimal('100.00'),
+    })
+    const callback = await paidCallback(gateway, order)
+    const cheaper = createOrder({
+      id: 'ORDER-2',
+      amount: moneyFromDecimal('1.00'),
+    })
+
+    await expect(
+      gateway.verify(callback, { expected: cheaper })
+    ).rejects.toMatchObject({ code: 'AMOUNT_MISMATCH' })
+  })
+
+  it('rejects a different order id', async () => {
+    const gateway = createMockGateway({ secretKey: 'test' })
+    const order = createOrder({
+      id: 'ORDER-3',
+      amount: moneyFromDecimal('100.00'),
+    })
+    const callback = await paidCallback(gateway, order)
+    const other = createOrder({
+      id: 'ORDER-4',
+      amount: moneyFromDecimal('100.00'),
+    })
+
+    await expect(
+      gateway.verify(callback, { expected: other })
+    ).rejects.toMatchObject({ code: 'ORDER_MISMATCH' })
+  })
+})
+```
+
+## Testing a real gateway without the network
+
+Every adapter accepts a `fetch` option. Inject a stub:
+
+```ts
+const gateway = createKhalti({
+  secretKey: 'sandbox-secret',
+  environment: 'sandbox',
+  returnUrl: 'https://example.com/callback',
+  fetch: async () =>
+    new Response(
+      JSON.stringify({ pidx: 'pidx-1', payment_url: 'https://pay/x' }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }
+    ),
+})
+```
+
+For callback verification, the stub must also answer the status lookup. Keep the
+stub close to the adapter's actual request shape so the test catches contract
+changes.
+
+## Testing your HTTP routes
+
+Drive the real route with `supertest` (Express), `app.request()` (Hono), or by
+calling the exported route handler (Next.js). Use the mock gateway and assert:
+
+- the order is created once
+- the callback returns 200
+- fulfillment happens once for two identical callbacks
+- a tampered callback returns 400 with the expected code
+
+The framework examples in `apps/` are tested this way.
+
+## Conformance suite
+
+`tests/conformance` runs one behavioral suite against every gateway through a
+thin driver. It checks checkout shape, transaction ids, verification sealing and
+rejection, status lookup, and callback parsing.
+
+When you add a gateway, add a driver and run the shared suite. This is how the
+packages stay consistent without duplicating tests four times.
+
+## JSON vectors
+
+`tests/vectors/` holds language-agnostic fixtures:
+
+- `amounts/`: parsing, boundaries, precision, invalid inputs
+- `callbacks/`: callback payloads
+- `signatures/`: signing schemes and known signatures
+- `statuses/`: raw → unified mappings
+
+They are useful if you reimplement the contract in another language.
+
+## Determinism
+
+- Freeze time when testing expiry or token timestamps.
+- Inject ids where the adapter allows it.
+- Avoid real sleeps; pass a fake `sleep` to `reconcile()`.
+- Assert on status and error code, not message text.
+
+## Guidelines
+
+- Never call a real gateway in unit tests.
+- Cover failure paths: they are the security surface.
+- Test the callback route with duplicate callbacks.
+- Test that an unknown checkout/order returns a safe error.
+- Run `pnpm test:bun` if you deploy to Bun.
+
+## See also
+
+- [Mock gateway](/docs/gateways/mock): complete controls and scenarios.
+- [Verification](/docs/core/verification): what to assert.
+- [Errors](/docs/core/errors): the full code list.

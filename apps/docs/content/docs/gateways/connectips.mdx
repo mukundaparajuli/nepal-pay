@@ -1,0 +1,261 @@
+---
+title: connectIPS
+description: NCHL connectIPS with RSA-signed form POST and validatetxn confirmation.
+---
+
+# connectIPS
+
+connectIPS is NCHL's bank-to-merchant payment gateway. The integration uses an
+RSA-signed form POST and a server-to-server validation call.
+
+```text
+your server builds and signs the form with your private key
+        ↓
+browser POSTs the form to connectIPS
+        ↓
+customer pays through their bank
+        ↓
+connectIPS redirects to your URL with ?TXNID=...
+        ↓
+your server calls validatetxn
+        ↓
+VerifiedPayment
+```
+
+The callback carries only `TXNID`. Everything else (status, amount, and
+authenticity) comes from `validatetxn`.
+
+## At a glance
+
+|               |                                         |
+| ------------- | --------------------------------------- |
+| Flow          | RSA-signed form POST                    |
+| Checkout type | `form_post`                             |
+| Callback      | `GET successUrl?TXNID=...`              |
+| Trust anchor  | `validatetxn` API                       |
+| Order id      | `TXNID` (1–20 chars, `A–Z a–z 0–9 _ -`) |
+| Amount        | Integer paisa                           |
+| Package       | `@nepal-pay/connectips`                 |
+
+## Install
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/connectips
+```
+
+## Convert `CREDITOR.pfx`
+
+NCHL gives you a PKCS#12 archive containing your RSA private key. WebCrypto
+cannot read PKCS#12, and the SDK does not want a native dependency at runtime, so
+convert it once to PKCS#8 PEM.
+
+Using the CLI:
+
+```bash
+npx @nepal-pay/cli connectips import-pfx ./CREDITOR.pfx \
+  --out ./creditor.key.pem
+```
+
+The password is read from `NPAY_PFX_PASSWORD` or `--password-stdin`, never from
+`argv`.
+
+Or in Node:
+
+```ts
+import { readFileSync } from 'node:fs'
+import { pfxToPkcs8Pem } from '@nepal-pay/connectips/pfx'
+
+const { privateKeyPem } = pfxToPkcs8Pem(
+  new Uint8Array(readFileSync('CREDITOR.pfx')),
+  process.env.NPAY_PFX_PASSWORD!
+)
+
+console.log(privateKeyPem) // store securely; do not commit
+```
+
+The `/pfx` subpath is Node-only, so browser bundles never pull in `node-forge`.
+
+## Get sandbox credentials
+
+From NCHL you need:
+
+- merchant id (`MERCHANTID`)
+- app id (the Basic-auth username)
+- app name (`APPNAME`)
+- Basic-auth password
+- `CREDITOR.pfx` and its password
+
+Register your success and failure URLs with NCHL.
+
+## Configure
+
+```ts
+import { createConnectIps } from '@nepal-pay/connectips'
+
+export const connectips = createConnectIps({
+  merchantId: process.env.CONNECTIPS_MERCHANT_ID!,
+  appId: process.env.CONNECTIPS_APP_ID!,
+  appName: process.env.CONNECTIPS_APP_NAME!,
+  password: process.env.CONNECTIPS_PASSWORD!,
+  privateKey: process.env.CONNECTIPS_PRIVATE_KEY_PEM!, // PKCS#8 PEM
+  environment: 'sandbox',
+  remarks: 'Order payment',
+  particulars: 'Order payment',
+})
+```
+
+| Option          | Required | Description                          |
+| --------------- | -------- | ------------------------------------ |
+| `merchantId`    | yes      | NCHL merchant id                     |
+| `appId`         | yes      | App id and Basic-auth username       |
+| `appName`       | yes      | Application name                     |
+| `password`      | yes      | Basic-auth password                  |
+| `privateKey`    | yes      | PKCS#8 RSA private key PEM           |
+| `environment`   | yes      | `'sandbox'` or `'production'`        |
+| `remarks`       | no       | Default `REMARKS`, max 50 chars      |
+| `particulars`   | no       | Default `PARTICULARS`, max 100 chars |
+| `baseUrl`       | no       | Override the environment base URL    |
+| `loginUrl`      | no       | Override the login-page endpoint     |
+| `validationUrl` | no       | Override `validatetxn`               |
+| `txnDetailUrl`  | no       | Override `gettxndetail`              |
+| `timeoutMs`     | no       | Server API timeout, default `10000`  |
+| `now`           | no       | Clock override for tests             |
+| `fetch`         | no       | Custom `fetch` for tests/proxies     |
+
+## Create a checkout
+
+```ts
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { connectips } from './payments.js'
+
+const order = createOrder({
+  id: 'ORDER-1001', // becomes TXNID
+  amount: moneyFromDecimal('100.00'),
+  productName: 'T-shirt',
+})
+
+const { checkout, txnRef } = await connectips.createCheckout(order)
+```
+
+`checkout` is always a form POST:
+
+```ts
+{
+  type: 'form_post',
+  url: 'https://uat.connectips.com/connectipswebgw/loginpage',
+  formParams: {
+    MERCHANTID,
+    APPID,
+    APPNAME,
+    TXNID,
+    TXNDATE,
+    TXNCRNCY,
+    TXNAMT,
+    REFERENCEID,
+    REMARKS,
+    PARTICULARS,
+    TOKEN,
+  },
+}
+```
+
+Render the fields as hidden inputs and submit. Never build `TOKEN` yourself.
+
+`TXNAMT` is integer paisa. `Money` with precision `0` is scaled automatically, so
+`moneyFromDecimal('100.00')` becomes `10000`.
+
+Remarks default to the order description and product name, and can be overridden:
+
+```ts
+await connectips.createCheckout(order, {
+  remarks: 'Invoice #42',
+  particulars: 'Summer T-shirt',
+})
+```
+
+Both fields have length and character limits (no commas in remarks).
+
+## Handle the callback
+
+connectIPS appends only the transaction id:
+
+```text
+https://example.com/payments/connectips/success?TXNID=ORDER-1001
+```
+
+```ts
+app.get('/payments/connectips/success', async (req, res) => {
+  const callback = connectips.parseCallback({ query: req.query })
+
+  const txnId = String(callback.data.TXNID ?? '')
+  const orderId = await db.transactions.findOrderByTxnId(txnId)
+  if (!orderId) return res.status(404).json({ error: 'UNKNOWN_CHECKOUT' })
+
+  const order = await db.orders.get(orderId)
+  if (!order) return res.status(404).json({ error: 'UNKNOWN_ORDER' })
+
+  const payment = await connectips.verify(callback, { expected: order })
+  // ...
+})
+```
+
+The callback carries no status. Do not try to infer success from the URL.
+
+## What `verify()` checks
+
+1. The callback is tagged `connectips`.
+2. `TXNID` is present and well-formed.
+3. `TXNID` equals the expected order id.
+4. `validatetxn` returns a result for this transaction.
+5. For `SUCCESS`, the returned amount equals the expected amount.
+
+```ts
+const payment = await connectips.verify(callback, { expected: order })
+```
+
+`SUCCESS` with a settling credit status seals `completed`. `FAILED` seals
+`failed`. `ERROR`, not-found, or incomplete responses seal `unknown`.
+
+## Status lookup
+
+```ts
+const payment = await connectips.status(txnRef, { expected: order })
+payment.status // 'completed' | 'failed' | 'unknown'
+```
+
+`status()` calls `gettxndetail`. Without `expected`, it reports the amount
+returned by NCHL and uses the transaction id as the order id.
+
+## Status mapping
+
+| connectIPS raw                                         | Unified     | Meaning                         |
+| ------------------------------------------------------ | ----------- | ------------------------------- |
+| `SUCCESS` with credit `000` / `999` / `DEFER` / absent | `completed` | Settled                         |
+| `SUCCESS` with a non-settling credit status            | `failed`    | Bank did not settle             |
+| `FAILED`                                               | `failed`    | Payment failed                  |
+| `ERROR` or unknown                                     | `unknown`   | Not found/incomplete; reconcile |
+
+## Sandbox test
+
+1. Convert the sandbox `CREDITOR.pfx` to PEM.
+2. Set the sandbox merchant/app credentials and `environment: 'sandbox'`.
+3. Register your public success/failure URLs with NCHL.
+4. Create a checkout and complete a sandbox bank payment.
+5. Confirm `validatetxn` returns `SUCCESS` and the amount matches.
+6. Run `npx @nepal-pay/cli gateway test connectips` to check your env.
+
+## Pitfalls
+
+| Symptom                                    | Cause                                                          | Fix                                                            |
+| ------------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| `ConfigurationError` about the private key | PFX was passed instead of PKCS#8 PEM                           | Run `npay connectips import-pfx`                               |
+| Signature rejected by connectIPS           | Wrong key, wrong password, or a modified form                  | Use the converted key; do not edit `formParams`                |
+| `ORDER_MISMATCH`                           | `TXNID` is not your order id                                   | Use a stable id within 1–20 safe characters                    |
+| `AMOUNT_MISMATCH`                          | Amount was sent as rupees, not paisa                           | Use `moneyFromDecimal` with precision 2; the adapter scales it |
+| `UNKNOWN_TRANSACTION`                      | `validatetxn` called before the gateway registered the payment | Retry/reconcile rather than fulfilling                         |
+
+## See also
+
+- [Reconciliation](/docs/core/reconciliation)
+- [Persistence](/docs/core/persistence)
+- [Errors](/docs/core/errors)

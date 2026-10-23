@@ -1,4 +1,4 @@
-import { PaymentError, type Order, type TxnRef } from '@nepal-payments/core'
+import { PaymentError, type Order, type TxnRef } from '@nepal-pay/core'
 import type {
   MockLedgerEntry,
   MockLedgerStatus,

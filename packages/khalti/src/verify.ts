@@ -5,8 +5,8 @@ import {
   type TxnRef,
   type UnverifiedCallback,
   type VerifiedPayment,
-} from '@nepal-payments/core'
-import { createVerifiedPayment } from '@nepal-payments/core/internal'
+} from '@nepal-pay/core'
+import { createVerifiedPayment } from '@nepal-pay/core/internal'
 import type {
   KhaltiCallbackPayload,
   KhaltiStatusOptions,

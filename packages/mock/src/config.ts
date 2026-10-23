@@ -3,7 +3,7 @@ import {
   PaymentError,
   type Money,
   createMoney,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import { DEFAULT_TIMEOUT_MS } from './constants.js'
 import type { MockConfig, MockScenario, ResolvedMockConfig } from './types.js'
 

@@ -10,7 +10,7 @@ import {
   rsaSha256Sign,
   rsaSha256Verify,
   PaymentError,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 function makeKeyPair(): {
   pkcs8Pem: string

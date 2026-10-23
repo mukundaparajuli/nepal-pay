@@ -1,0 +1,183 @@
+---
+title: Mock gateway
+description: A deterministic, in-memory gateway for tests and local development.
+---
+
+# Mock gateway
+
+`@nepal-pay/mock` implements the same `GatewayAdapter` contract as a real
+gateway, but keeps everything in memory. It is the fastest way to:
+
+- run the complete lifecycle without credentials
+- test success, failure, cancellation, and expiry
+- prove that signature and amount checks reject tampering
+- build a UI before merchant onboarding is complete
+
+The mock is intentionally deterministic. With the same input and scenario, you
+get the same behavior: no network flakiness, no rate limits, no sandbox
+downtime.
+
+## Install
+
+```bash
+pnpm add -D @nepal-pay/core @nepal-pay/mock
+```
+
+## The full lifecycle
+
+```ts
+import { createMockGateway } from '@nepal-pay/mock'
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+
+const gateway = createMockGateway({ secretKey: 'dev-secret' })
+
+const order = createOrder({
+  id: 'ORDER-1',
+  amount: moneyFromDecimal('100.00'),
+})
+
+const { checkout, txnRef } = await gateway.createCheckout(order)
+// checkout.type === 'redirect'
+// checkout.url    === 'https://mock.invalid/pay/code/...'
+
+await gateway.pay(txnRef) // the customer pays
+const raw = await gateway.generateCallback(txnRef) // the gateway signs a callback
+
+const callback = gateway.parseCallback(raw)
+const payment = await gateway.verify(callback, { expected: order })
+```
+
+The mock can do everything the real adapters can, plus `pay()`,
+`generateCallback()`, `settle()`, `expire()`, and `setStatus()`.
+
+## Configuration
+
+| Option        | Required | Description                             |
+| ------------- | -------- | --------------------------------------- |
+| `secretKey`   | yes      | Signs callbacks and verifies signatures |
+| `scenario`    | no       | Default `success`                       |
+| `checkoutUrl` | no       | Override the fake redirect base         |
+| `delayMs`     | no       | Delay used by `delayed`                 |
+| `timeoutMs`   | no       | Timeout used by `timeout`               |
+
+## Scenarios
+
+| Scenario            | What happens                                     | Use it to test           |
+| ------------------- | ------------------------------------------------ | ------------------------ |
+| `success`           | `pay()` → `completed`                            | The happy path           |
+| `pending`           | `pay()` → `pending`; call `settle()` later       | Polling/reconciliation   |
+| `failed`            | `pay()` → `failed`                               | Declined payments        |
+| `expired`           | Checkout starts and stays expired                | Expired sessions         |
+| `abandoned`         | Customer never pays; `generateCallback()` throws | Missing callbacks        |
+| `delayed`           | Callback waits `delayMs`                         | Slow networks / timeouts |
+| `duplicate`         | Callback can be emitted repeatedly               | Idempotency              |
+| `timeout`           | `verify()` / `status()` abort                    | Timeout handling         |
+| `invalid-signature` | Callback signature is forged                     | Signature rejection      |
+
+## Controls
+
+```ts
+await gateway.pay(txnRef) // mark paid according to the scenario
+await gateway.settle(txnRef) // pending → completed
+await gateway.expire(txnRef) // mark expired
+await gateway.setStatus(txnRef, 'canceled') // force a status
+const raw = await gateway.generateCallback(txnRef)
+```
+
+`gateway.ledger` exposes every entry if you need to inspect state.
+
+## Testing the security boundary
+
+The mock is not only for the happy path. Use it to prove that your application
+does not trust callbacks:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import {
+  createOrder,
+  moneyFromDecimal,
+  VerificationError,
+} from '@nepal-pay/core'
+import { createMockGateway } from '@nepal-pay/mock'
+
+describe('verification', () => {
+  it('rejects a forged signature', async () => {
+    const gateway = createMockGateway({
+      secretKey: 'test',
+      scenario: 'invalid-signature',
+    })
+    const order = createOrder({
+      id: 'ORDER-1',
+      amount: moneyFromDecimal('100.00'),
+    })
+
+    const { txnRef } = await gateway.createCheckout(order)
+    await gateway.pay(txnRef)
+    const raw = await gateway.generateCallback(txnRef)
+    const callback = gateway.parseCallback(raw)
+
+    await expect(
+      gateway.verify(callback, { expected: order })
+    ).rejects.toMatchObject({ code: 'SIGNATURE_MISMATCH' })
+  })
+
+  it('rejects a changed amount', async () => {
+    const gateway = createMockGateway({ secretKey: 'test' })
+    const order = createOrder({
+      id: 'ORDER-2',
+      amount: moneyFromDecimal('100.00'),
+    })
+    const tampered = createOrder({
+      id: 'ORDER-2',
+      amount: moneyFromDecimal('1.00'),
+    })
+
+    const { txnRef } = await gateway.createCheckout(order)
+    await gateway.pay(txnRef)
+    const callback = gateway.parseCallback(
+      await gateway.generateCallback(txnRef)
+    )
+
+    await expect(
+      gateway.verify(callback, { expected: tampered })
+    ).rejects.toMatchObject({ code: 'AMOUNT_MISMATCH' })
+  })
+})
+```
+
+## Using it in a dev server
+
+The mock's checkout URL points at `https://mock.invalid`, which a browser
+cannot reach. Add a development-only route that calls `pay()` and
+`generateCallback()` and then feeds the result through the **same** callback
+handler as production:
+
+```ts
+app.post('/dev/simulate', async (req, res) => {
+  await gateway.pay(req.body.txnRef)
+  const raw = await gateway.generateCallback(req.body.txnRef)
+  const callback = gateway.parseCallback(raw)
+  const payment = await processCallback(callback) // same path as production
+  res.json({ status: payment.status, orderId: payment.orderId })
+})
+```
+
+Remove this route in production.
+
+## What the mock does not prove
+
+The mock validates the SDK contract and your application logic. It does not
+validate gateway-specific quirks such as:
+
+- the exact form fields a real gateway requires
+- real signature algorithms or key formats
+- provider rate limits, timeouts, or sandbox behavior
+- bank settlement rules
+
+Run at least one real sandbox payment per gateway before going live.
+
+## See also
+
+- [Testing](/docs/guides/testing): the full test strategy.
+- [First payment](/docs/getting-started/first-payment): a guided run.
+- [Gateway contract](/docs/core/gateway-contract): what the mock implements.

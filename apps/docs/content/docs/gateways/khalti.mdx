@@ -1,0 +1,212 @@
+---
+title: Khalti
+description: ePayment redirect checkout with a mandatory server-side lookup.
+---
+
+# Khalti
+
+Khalti uses a redirect flow with a server-to-server lookup. The redirect tells
+you _which_ payment to look up; it does not prove that the payment succeeded.
+
+```text
+your server calls Khalti /initiate/
+        ↓
+customer is redirected to Khalti's payment page
+        ↓
+customer pays
+        ↓
+Khalti redirects to your return URL with ?pidx=...
+        ↓
+your server calls Khalti /lookup/ with the pidx
+        ↓
+VerifiedPayment
+```
+
+That lookup is the trust anchor. A forged redirect can contain any `pidx`, but
+it cannot make Khalti's lookup API report a completed payment.
+
+## At a glance
+
+|               |                                             |
+| ------------- | ------------------------------------------- |
+| Flow          | Redirect + server lookup                    |
+| Checkout type | `redirect`                                  |
+| Callback      | `GET returnUrl?pidx=...`                    |
+| Trust anchor  | Khalti `/lookup/` API                       |
+| Order lookup  | `pidx` → your stored `txnRef.id → order.id` |
+| Limits        | Minimum Rs. 10, maximum 2 decimals          |
+| Package       | `@nepal-pay/khalti`                         |
+
+## Install
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/khalti
+```
+
+## Get sandbox credentials
+
+From the Khalti merchant dashboard you need:
+
+- a **secret key**
+- a registered **return URL**
+
+Sandbox and production keys are different. The adapter chooses the endpoint from
+`environment`.
+
+## Configure
+
+```ts
+import { createKhalti } from '@nepal-pay/khalti'
+
+export const khalti = createKhalti({
+  secretKey: process.env.KHALTI_SECRET_KEY!,
+  environment: 'sandbox', // 'sandbox' | 'production'
+  returnUrl: 'https://example.com/payments/khalti/return',
+  websiteUrl: 'https://example.com',
+})
+```
+
+| Option        | Required | Description                              |
+| ------------- | -------- | ---------------------------------------- |
+| `secretKey`   | yes      | Sent as the `Authorization` header       |
+| `environment` | yes      | `'sandbox'` or `'production'`            |
+| `returnUrl`   | no\*     | Fallback for `order.returnUrl`           |
+| `websiteUrl`  | no       | Defaults to the origin of the return URL |
+| `initiateUrl` | no       | Override the initiate endpoint           |
+| `lookupUrl`   | no       | Override the lookup endpoint             |
+| `timeoutMs`   | no       | HTTP timeout, default `10000`            |
+| `fetch`       | no       | Custom `fetch` for tests/proxies         |
+
+\* A return URL is required from either the config or the order.
+
+## Create a checkout
+
+Khalti requires customer information, so include it on the order:
+
+```ts
+import { createOrder, moneyFromDecimal } from '@nepal-pay/core'
+import { khalti } from './payments.js'
+
+const order = createOrder({
+  id: 'ORDER-1001',
+  amount: moneyFromDecimal('100.00'),
+  customerName: 'Sita Rai',
+  customerEmail: 'sita@example.com',
+  customerPhone: '9800000000',
+  productName: 'Summer T-shirt',
+})
+
+const { checkout, txnRef } = await khalti.createCheckout(order)
+
+// Persist this BEFORE redirecting.
+await db.transactions.insert({ txnId: txnRef.id, orderId: order.id })
+
+res.redirect(checkout.url)
+```
+
+`checkout.type` is `'redirect'`. `checkout.url` is Khalti's hosted payment page.
+
+Per-checkout overrides:
+
+```ts
+const { checkout } = await khalti.createCheckout(order, {
+  returnUrl: 'https://example.com/checkout/done',
+  websiteUrl: 'https://store.example.com',
+  purchaseOrderName: 'Summer T-shirt',
+})
+```
+
+Rules enforced by Khalti:
+
+- Minimum **Rs. 10** (1000 paisa).
+- At most 2 decimal places.
+- `purchase_order_name` falls back to `productName`, then `description`, then
+  the order id.
+- Customer name, email, and phone are sent in `customer_info`.
+
+## Handle the callback
+
+Khalti redirects to your return URL:
+
+```text
+https://example.com/payments/khalti/return?pidx=abc123&status=Completed&...
+```
+
+```ts
+app.get('/payments/khalti/return', async (req, res) => {
+  const callback = khalti.parseCallback({ query: req.query })
+
+  // The callback contains pidx, not your order id.
+  const pidx = String(callback.data.pidx ?? '')
+  const orderId = await db.transactions.findOrderByTxnId(pidx)
+  if (!orderId) return res.status(404).json({ error: 'UNKNOWN_CHECKOUT' })
+
+  const order = await db.orders.get(orderId)
+  if (!order) return res.status(404).json({ error: 'UNKNOWN_ORDER' })
+
+  const payment = await khalti.verify(callback, { expected: order })
+  // ...
+})
+```
+
+Do not use the `status` query parameter to decide anything. It is part of the
+same untrusted redirect.
+
+## What `verify()` checks
+
+1. The callback is tagged `khalti`.
+2. `pidx` is present and well-formed.
+3. Khalti's `/lookup/` API reports a status for that `pidx`.
+4. The lookup's amount and `purchase_order_id` match the expected order.
+5. A successful lookup is required before a `completed` payment is sealed.
+
+```ts
+const payment = await khalti.verify(callback, { expected: order })
+```
+
+The sealed `txnRef.id` is the `pidx`.
+
+## Status lookup
+
+```ts
+const payment = await khalti.status(txnRef, { expected: order })
+payment.status
+```
+
+`status()` is the same lookup without a callback. Use it in reconciliation.
+
+## Status mapping
+
+| Khalti raw      | Unified     | Meaning                            |
+| --------------- | ----------- | ---------------------------------- |
+| `Completed`     | `completed` | Paid                               |
+| `Pending`       | `pending`   | Not final                          |
+| `Initiated`     | `pending`   | Customer has not completed payment |
+| `User canceled` | `canceled`  | Customer canceled                  |
+| `Expired`       | `expired`   | Checkout expired                   |
+| `Refunded`      | `unknown`   | Refund; handle separately          |
+
+## Sandbox test
+
+1. Set `environment: 'sandbox'` and use your sandbox secret key.
+2. Register your public return URL with Khalti.
+3. Create a checkout and pay with a Khalti sandbox account.
+4. Confirm your callback performs the lookup and fulfills once.
+5. Replay the return URL by hand. The lookup should still report the real state,
+   and your idempotency guard should prevent a second fulfillment.
+
+## Pitfalls
+
+| Symptom                         | Cause                                                    | Fix                                                             |
+| ------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
+| Redirect works but verify fails | The return URL was opened without a real payment         | `verify()` requires a successful lookup; do not fake `pidx`     |
+| `AMOUNT_MISMATCH`               | Amount below Rs. 10, too many decimals, or order changed | Fix the amount before checkout; verify against the stored order |
+| `UNKNOWN_CHECKOUT`              | `txnRef.id → order.id` was not persisted                 | Save the mapping before redirecting                             |
+| Customer info missing           | Khalti requires name, email, and phone                   | Populate them on the order                                      |
+| `401` from Khalti               | Wrong key or environment                                 | Use the sandbox key with `environment: 'sandbox'`               |
+
+## See also
+
+- [Verification](/docs/core/verification)
+- [Persistence](/docs/core/persistence)
+- [Troubleshooting](/docs/guides/troubleshooting)

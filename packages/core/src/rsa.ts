@@ -6,8 +6,8 @@ import { base64DecodeBytes, base64EncodeBytes } from './utils.js'
  * standard mapping of `SHA256withRSA`. Browser and Node (>=18) compatible.
  *
  * Only PKCS#8 private keys and SPKI public keys are supported. PKCS#12
- * (`.pfx`/`.p12`) archives are NOT parsed here — convert them to PKCS#8 first
- * (see `@nepal-payments/connectips/pfx`).
+ * (`.pfx`/`.p12`) archives are NOT parsed here. Convert them to PKCS#8 first
+ * (see `@nepal-pay/connectips/pfx`).
  */
 
 const RSA_PARAMS: RsaHashedImportParams = {

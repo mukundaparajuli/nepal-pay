@@ -8,11 +8,11 @@ import {
   type PaymentMethod,
   type UnverifiedCallback,
   type VerifiedPayment,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   createVerifiedPayment,
   type VerifiedPaymentInput,
-} from '@nepal-payments/core/internal'
+} from '@nepal-pay/core/internal'
 
 const validInput = (): VerifiedPaymentInput => ({
   __unverified: true,

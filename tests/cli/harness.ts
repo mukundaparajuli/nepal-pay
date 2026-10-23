@@ -1,4 +1,4 @@
-import type { CliContext, DirEntry } from '@nepal-payments/cli'
+import type { CliContext, DirEntry } from '@nepal-pay/cli'
 
 export interface TestHarness {
   readonly ctx: CliContext

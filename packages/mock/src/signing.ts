@@ -1,4 +1,4 @@
-import { hmacSha256, verifyHmacSha256 } from '@nepal-payments/core'
+import { hmacSha256, verifyHmacSha256 } from '@nepal-pay/core'
 
 export function buildMockSignatureMessage(values: {
   readonly txn_id: string

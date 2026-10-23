@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Checkout, CheckoutType } from '@nepal-payments/core'
+import type { Checkout, CheckoutType } from '@nepal-pay/core'
 
 function summarize(checkout: Checkout): string {
   switch (checkout.type) {

@@ -1,0 +1,113 @@
+---
+title: Money
+description: Exact NPR amounts as bigint minor units. No floating point.
+---
+
+# Money
+
+Money is an exact integer count of the minor unit, never a float.
+
+```ts
+interface Money {
+  readonly amount: bigint // scaled minor units: 100.00 NPR => 10000n
+  readonly currency: 'NPR'
+  readonly precision: number // decimal places, e.g. 2
+}
+```
+
+## Create money
+
+```ts
+import {
+  createMoney,
+  moneyFromDecimal,
+  moneyToDecimal,
+  moneyToJSON,
+  moneyFromJSON,
+  addMoney,
+  subtractMoney,
+  multiplyMoney,
+  compareMoney,
+  moneyEquals,
+  isMoney,
+} from '@nepal-pay/core'
+
+const amount = moneyFromDecimal('100.50')
+// { amount: 10050n, currency: 'NPR', precision: 2 }
+
+moneyToDecimal(amount) // '100.50'
+```
+
+| Function                                           | Input                                                                        | Use for                      |
+| -------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------- |
+| `createMoney(amount, currency?, precision?)`       | Scaled minor units (`bigint`, safe integer `number`, or integer-only string) | Internal/stored values       |
+| `moneyFromDecimal(decimal, currency?, precision?)` | Decimal string such as `'100.50'`                                            | User input and API payloads  |
+| `isMoney(value)`                                   | Any value                                                                    | Runtime guard                |
+| `moneyToDecimal(money)`                            | `Money`                                                                      | Display and gateway payloads |
+| `moneyToJSON` / `moneyFromJSON`                    | `Money` / JSON                                                               | Exact portable serialization |
+
+`createMoney` rejects unsafe integer numbers. Use a `bigint` or a string for
+large values.
+
+## Arithmetic
+
+```ts
+const total = addMoney(moneyFromDecimal('100.00'), moneyFromDecimal('25.50'))
+moneyToDecimal(total) // '125.50'
+
+const doubled = multiplyMoney(total, 2)
+moneyToDecimal(doubled) // '251.00'
+```
+
+Arithmetic requires **matching currency and precision**. `multiplyMoney` accepts
+an **integer** factor (`bigint` or safe integer `number`); it does not accept
+decimals. Convert percentages to integers yourself.
+
+`subtractMoney` does not reject a negative result. Validate your business rules
+before subtracting if a negative amount is not meaningful.
+
+## Compare
+
+```ts
+compareMoney(moneyFromDecimal('100'), moneyFromDecimal('100.00')) // 0
+moneyEquals(moneyFromDecimal('100'), moneyFromDecimal('100.00')) // true
+```
+
+Comparisons are **cross-precision** and same-currency. `compareMoney` throws on
+a currency mismatch. `moneyEquals` returns `false` for a mismatch rather than
+throwing.
+
+## Serialization
+
+`Money` contains a `bigint`, so `JSON.stringify` would throw. Use the helpers:
+
+```ts
+const json = moneyToJSON(moneyFromDecimal('100.00'))
+// { amount: '10000', currency: 'NPR', precision: 2 }
+
+const money = moneyFromJSON(json)
+```
+
+When using a database, store `amount.amount.toString()`, `currency`, and
+`precision` as separate columns. Read back with `createMoney()` or
+`moneyFromJSON()`.
+
+## Formatting
+
+`moneyToDecimal` returns a plain decimal string with exactly `precision` places:
+
+```ts
+moneyToDecimal(moneyFromDecimal('100')) // '100.00'
+moneyToDecimal(moneyFromDecimal('0.5')) // '0.50'
+```
+
+Format currency symbols and thousands separators in your UI layer. The SDK
+intentionally does not depend on `Intl` or a locale.
+
+## Common mistakes
+
+- Passing `100.5` as a `number` to `createMoney`: that is 100.5 paisa, not NPR.
+  Use `moneyFromDecimal('100.50')`.
+- Mixing currencies in one arithmetic operation is not supported.
+- Comparing with `===`: objects are not value-equal. Use `moneyEquals()`.
+- Assuming `Money.amount` is a `number`: it is a `bigint`.

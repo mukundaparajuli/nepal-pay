@@ -1,0 +1,119 @@
+---
+title: Callbacks
+description: Decode untrusted gateway responses without trusting them.
+---
+
+# Callbacks
+
+A callback is whatever the gateway sends back: a query string, a form body, or
+both. It is **untrusted input**. Anyone can request your callback URL with any
+parameters they like.
+
+## Parse
+
+```ts
+const callback = gateway.parseCallback({
+  query: req.query,
+  body: req.body,
+  headers: req.headers,
+})
+```
+
+`parseCallback` only decodes. It does not validate signatures, orders, amounts,
+or statuses. The return value is an `UnverifiedCallback`:
+
+```ts
+interface RawCallbackRequest {
+  readonly body?: unknown
+  readonly query?: Record<string, unknown>
+  readonly headers?: Record<string, string>
+}
+
+interface UnverifiedCallback {
+  readonly gateway: PaymentMethod
+  readonly data: Record<string, unknown>
+  readonly headers?: Record<string, string>
+  readonly body?: unknown
+}
+```
+
+Pass the **raw** request through. Do not trim, lowercase, re-encode, or rebuild
+it: signatures are computed over the exact bytes or parameter order the gateway
+used.
+
+## Do not branch on `callback.data`
+
+```ts
+// WRONG
+if (callback.data.status === 'COMPLETE') {
+  await fulfill(callback.data.order_id)
+}
+
+// RIGHT
+const payment = await gateway.verify(callback, { expected: order })
+if (payment.status === 'completed') {
+  await fulfill(payment.orderId)
+}
+```
+
+The first version lets anyone mark an order paid with a forged URL. The second
+goes through signature, order, and amount verification.
+
+## Gateway-specific fields
+
+Every gateway puts the order id in a different field:
+
+| Gateway    | Order id field     | Notes                                                    |
+| ---------- | ------------------ | -------------------------------------------------------- |
+| eSewa      | `transaction_uuid` | Base64 `data` query parameter                            |
+| Khalti     | none               | Callback contains `pidx`; look up `txnRef.id → order.id` |
+| connectIPS | `TXNID`            | Form POST                                                |
+| Fonepay    | `PRN`              | Query string with `DV` signature                         |
+| Mock       | `order_id`         | Query or body depending on `generateCallback`            |
+
+Use the `txnRef.id → order.id` mapping for Khalti and any gateway where the
+callback does not carry your order id.
+
+## Callback fingerprints
+
+For replay bookkeeping without storing the raw payload, compute a stable hash:
+
+```ts
+import { callbackFingerprint } from '@nepal-pay/core'
+
+const fingerprint = await callbackFingerprint(callback)
+```
+
+This is an audit aid, not a replacement for signature verification. A valid
+signature is still required.
+
+## Duplicate callbacks
+
+Gateways retry. The same payment can produce several callbacks. Make fulfillment
+idempotent by order id:
+
+```ts
+const claimed = await store.acquireIdempotencyKey(payment.orderId)
+if (!claimed) return
+await store.savePayment(paymentFromVerified(payment))
+if (payment.status === 'completed') await ship(payment.orderId)
+```
+
+See [Persistence](/docs/core/persistence) for the `PaymentStore` contract.
+
+## Response
+
+Return quickly. Most gateways only care about the HTTP status. A common pattern:
+
+```ts
+try {
+  const payment = await processCallback(callback)
+  res.status(200).json({ ok: true })
+} catch (error) {
+  const code = error instanceof NepalPayError ? error.code : 'INTERNAL'
+  res.status(400).json({ error: code })
+}
+```
+
+If your fulfillment is slow, enqueue it and return `200`. Do not make the
+gateway wait on email, shipping, or analytics.

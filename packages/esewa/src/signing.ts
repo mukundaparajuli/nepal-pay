@@ -1,4 +1,4 @@
-import { hmacSha256, constantTimeCompare } from '@nepal-payments/core'
+import { hmacSha256, constantTimeCompare } from '@nepal-pay/core'
 
 export function buildSignatureMessage(
   values: Readonly<Record<string, string>>,

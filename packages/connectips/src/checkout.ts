@@ -4,7 +4,7 @@ import {
   type Order,
   type RsaPrivateKey,
   type TxnRef,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import {
   PARTICULARS_MAX_LENGTH,
   REMARKS_MAX_LENGTH,

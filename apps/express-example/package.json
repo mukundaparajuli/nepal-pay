@@ -1,5 +1,5 @@
 {
-  "name": "@nepal-payments/express-example",
+  "name": "@nepal-pay/express-example",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,11 +10,11 @@
     "start": "node src/server.ts"
   },
   "dependencies": {
-    "@nepal-payments/core": "workspace:^",
+    "@nepal-pay/core": "workspace:^",
     "express": "^5.3.0"
   },
   "devDependencies": {
-    "@nepal-payments/mock": "workspace:^",
+    "@nepal-pay/mock": "workspace:^",
     "@types/express": "^5.0.6"
   }
 }

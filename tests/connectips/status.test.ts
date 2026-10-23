@@ -3,13 +3,10 @@ import {
   createOrder,
   moneyEquals,
   moneyFromDecimal,
-  NepalPaymentsError,
+  NepalPayError,
   type Order,
-} from '@nepal-payments/core'
-import {
-  createConnectIps,
-  mapConnectIpsStatus,
-} from '@nepal-payments/connectips'
+} from '@nepal-pay/core'
+import { createConnectIps, mapConnectIpsStatus } from '@nepal-pay/connectips'
 import { stubRequest } from '../khalti/helpers.js'
 import { testConfig } from './helpers.js'
 
@@ -111,7 +108,7 @@ describe('checkConnectIpsStatus', () => {
     const error = await capture(() =>
       gateway.status({ id: 'bad id!', gateway: 'connectips' })
     )
-    expect((error as NepalPaymentsError).code).toBe('INVALID_TXN_REF')
+    expect((error as NepalPayError).code).toBe('INVALID_TXN_REF')
   })
 
   it('rejects a status lookup for another gateway', async () => {
@@ -119,6 +116,6 @@ describe('checkConnectIpsStatus', () => {
     const error = await capture(() =>
       gateway.status({ id: 'ORD-123', gateway: 'esewa' })
     )
-    expect((error as NepalPaymentsError).code).toBe('GATEWAY_MISMATCH')
+    expect((error as NepalPayError).code).toBe('GATEWAY_MISMATCH')
   })
 })

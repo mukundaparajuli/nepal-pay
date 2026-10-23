@@ -6,9 +6,9 @@ import {
   isVerifiedPayment,
   moneyFromDecimal,
   paymentFromVerified,
-} from '@nepal-payments/core'
-import { createVerifiedPayment } from '@nepal-payments/core/internal'
-import { createMockGateway } from '@nepal-payments/mock'
+} from '@nepal-pay/core'
+import { createVerifiedPayment } from '@nepal-pay/core/internal'
+import { createMockGateway } from '@nepal-pay/mock'
 
 const TXN_REF = { id: 'mock_security_1', gateway: 'mock' } as const
 
@@ -46,7 +46,7 @@ describe('an unpaid order can never become a completed payment', () => {
   })
 
   it('keeps the seal out of the public API surface', async () => {
-    const publicApi = await import('@nepal-payments/core')
+    const publicApi = await import('@nepal-pay/core')
     expect('createVerifiedPayment' in publicApi).toBe(false)
   })
 
@@ -61,7 +61,7 @@ describe('an unpaid order can never become a completed payment', () => {
   it('cannot be forged by re-adding the copied own keys', () => {
     const genuine = sealed('completed')
     const rebuilt = Object.assign({}, genuine, {
-      [Symbol.for('nepal-payments.verified-payment')]: true,
+      [Symbol.for('nepal-pay.verified-payment')]: true,
     })
     expect(isVerifiedPayment(rebuilt)).toBe(false)
     expect(isCompletedPayment(rebuilt)).toBe(false)

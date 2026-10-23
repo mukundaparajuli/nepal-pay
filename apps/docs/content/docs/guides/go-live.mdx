@@ -1,0 +1,229 @@
+---
+title: Go live
+description: Take a working integration from sandbox to production safely.
+---
+
+# Go live
+
+Every gateway is the same story in two acts:
+
+1. **Sandbox**: test credentials and a UAT endpoint. No real money moves.
+2. **Production**: live credentials. Real money moves. You change one config
+   value.
+
+Do not skip sandbox. It exists so production is boring.
+
+## 1. Pick a gateway and get credentials
+
+| Gateway    | Flow                          | What you get                                       |
+| ---------- | ----------------------------- | -------------------------------------------------- |
+| eSewa      | form POST                     | product code + HMAC secret                         |
+| Khalti     | redirect + server lookup      | secret key                                         |
+| connectIPS | form POST + server validation | merchant id, app id/name, password, `CREDITOR.pfx` |
+| Fonepay    | GET redirect + HMAC-SHA512 DV | merchant PID + shared secret                       |
+
+Each gateway requires onboarding (merchant account, KYC, signed agreement). See
+the provider guide for specifics:
+
+- [eSewa](/docs/gateways/esewa)
+- [Khalti](/docs/gateways/khalti)
+- [connectIPS](/docs/gateways/connectips)
+- [Fonepay](/docs/gateways/fonepay)
+
+Register your callback/return URLs with the gateway. They must be public HTTPS
+URLs: `localhost` cannot be registered.
+
+## 2. Store secrets once
+
+The SDK never reads environment variables; your app does. Generate a template:
+
+```bash
+npx @nepal-pay/cli init
+npx @nepal-pay/cli init --gateways esewa
+```
+
+Copy it to `.env` and make sure `.env` is git-ignored:
+
+```bash
+cp .env.example .env
+echo '.env' >> .gitignore
+```
+
+```dotenv
+# eSewa
+ESEWA_MERCHANT_CODE=
+ESEWA_SECRET=
+ESEWA_ENVIRONMENT=sandbox
+
+# Khalti
+KHALTI_SECRET_KEY=
+KHALTI_RETURN_URL=https://your-app.example/payments/callback
+KHALTI_ENVIRONMENT=sandbox
+
+# connectIPS
+CONNECTIPS_MERCHANT_ID=
+CONNECTIPS_APP_ID=
+CONNECTIPS_APP_NAME=
+CONNECTIPS_PASSWORD=
+CONNECTIPS_PRIVATE_KEY_PATH=./creditor.key.pem
+CONNECTIPS_ENVIRONMENT=sandbox
+
+# Fonepay
+FONEPAY_PID=
+FONEPAY_SECRET_KEY=
+FONEPAY_RETURN_URL=https://your-app.example/payments/fonepay/return
+FONEPAY_ENVIRONMENT=sandbox
+```
+
+> **Never commit `.env`.** Use a secret manager in production and keep the
+> credentials on the server only.
+
+### connectIPS: convert the key
+
+connectIPS provides a PKCS#12 archive (`CREDITOR.pfx`). WebCrypto cannot read
+it, so convert it once to PKCS#8:
+
+```bash
+npx @nepal-pay/cli connectips import-pfx ./CREDITOR.pfx --out ./creditor.key.pem
+```
+
+The password is read from `NPAY_PFX_PASSWORD` or `--password-stdin`, never from
+`argv`. Point `CONNECTIPS_PRIVATE_KEY_PATH` at the PEM.
+
+## 3. Smoke-test offline
+
+```bash
+npx @nepal-pay/cli gateway test mock
+npx @nepal-pay/cli gateway test esewa
+```
+
+`gateway test` catches missing variables, malformed keys, and bad URLs in one
+second instead of one redirect later. See [CLI](/docs/guides/cli).
+
+## 4. Prove the flow in sandbox
+
+Set `environment: 'sandbox'` and use the same routes you built locally.
+
+```ts
+const gateway = createEsewa({
+  merchantCode: process.env.ESEWA_MERCHANT_CODE!,
+  secret: process.env.ESEWA_SECRET!,
+  environment: 'sandbox',
+  successUrl: 'https://your-app.example/payments/callback',
+  failureUrl: 'https://your-app.example/payments/callback',
+})
+```
+
+Expose your local server with a tunnel (for example `ngrok http 3000`) and
+register that public URL with the gateway.
+
+Walk the flow in a browser:
+
+1. Create an order and redirect to the gateway.
+2. Pay with the gateway's sandbox test credentials.
+3. Watch the callback log the verified, fulfilled order.
+
+Test the unhappy paths: they are the security surface:
+
+- Re-send the callback by hand → fulfill **once**.
+- Change the amount → `AMOUNT_MISMATCH`.
+- Change the order id → `ORDER_MISMATCH`.
+- Tamper the signature → `SIGNATURE_MISMATCH`.
+- Never pay → reconciliation reports `pending`/`failed`.
+
+## 5. Production checklist
+
+### Correctness and money
+
+- [ ] Amounts come from input only via `moneyFromDecimal(...)`; no
+      `parseFloat`, no `Number(amount) * 100`.
+- [ ] The gateway-reported amount is verified against the saved order.
+- [ ] Fulfillment cannot run twice for one order.
+
+### Security
+
+- [ ] Gateway secrets live only in server-side env vars, never in client code or
+      logs.
+- [ ] The callback route treats everything as untrusted and calls `verify()`.
+- [ ] No "success" flag from the browser or query string is trusted.
+- [ ] HTTPS everywhere; callback URLs are registered with the gateway.
+- [ ] Server-side confirmation is enabled (Khalti lookup, eSewa status,
+      connectIPS `validatetxn`, Fonepay `serverVerification`).
+
+### Reliability
+
+- [ ] Lost callbacks are recovered with `reconcile()` from your own cron/queue.
+- [ ] Payments are persisted through a real `PaymentStore`, so a redeploy does
+      not lose in-flight orders.
+- [ ] Callback handling is idempotent for retries and duplicates.
+
+### Operations
+
+- [ ] Errors are logged with `NepalPayError.code`, never the raw secret or
+      full payload.
+- [ ] You can see, per order, which `txnRef` it maps to.
+- [ ] You can disable a gateway with a flag or config change without a deploy.
+
+## 6. Handle the callback that never comes
+
+Pair a persistent store with a reconciliation job:
+
+```ts
+import {
+  reconcile,
+  paymentFromVerified,
+  type GatewayAdapter,
+  type Order,
+  type TxnRef,
+} from '@nepal-pay/core'
+
+async function reconcilePending(
+  gateway: GatewayAdapter,
+  order: Order,
+  txnRef: TxnRef,
+  store: PaymentStore
+) {
+  const result = await reconcile(
+    gateway,
+    { order, txnRef },
+    {
+      maxAttempts: 5,
+      backoffMs: 250,
+      timeoutMs: 10_000,
+    }
+  )
+
+  if (result.resolved) {
+    await store.savePayment(paymentFromVerified(result.payment))
+  }
+}
+```
+
+`reconcile()` performs **one** bounded run and does not schedule itself. See
+[Reconciliation](/docs/core/reconciliation) and
+[Persistence](/docs/core/persistence).
+
+## 7. Per-gateway gotchas
+
+| Gateway    | Watch out for                                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| eSewa      | Order id becomes `transaction_uuid`; surcharges are subtracted from the amount; callback is base64 JSON in `?data=`.                      |
+| Khalti     | Minimum Rs. 10, at most 2 decimals; the redirect alone is never trusted; every payment needs a server lookup.                             |
+| connectIPS | Convert `CREDITOR.pfx` to PKCS#8 first; callback carries only `TXNID`; authenticity comes from `validatetxn`; amounts are integer paisa.  |
+| Fonepay    | Callback `DV` is HMAC-SHA512 checked in constant time; `status()` requires the expected amount; `R1`/`R2` remarks may not contain commas. |
+
+## 8. Switch to production
+
+1. Swap sandbox credentials for production ones and set
+   `environment: 'production'`.
+2. Update the registered callback URL to your production domain if it differs.
+3. Run `npx @nepal-pay/cli gateway test <gateway>` again.
+4. Make one small real payment yourself, end to end, and confirm fulfillment.
+5. Watch the first few real payments, then relax.
+
+## Next
+
+- [Security](/docs/guides/security): trust model and checklist.
+- [Errors](/docs/core/errors) and
+  [Troubleshooting](/docs/guides/troubleshooting); when something misbehaves.
+- [Architecture](/docs/guides/architecture): how the packages fit together.

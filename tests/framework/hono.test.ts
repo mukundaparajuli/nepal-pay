@@ -5,8 +5,8 @@ import {
 } from '../../apps/hono-example/src/app.js'
 import { startServer } from '../../apps/hono-example/src/server.js'
 import { mockGateway } from '../mock/helpers.js'
-import { safeBase64Encode, type TxnRef } from '@nepal-payments/core'
-import { signMockCallback } from '@nepal-payments/mock'
+import { safeBase64Encode, type TxnRef } from '@nepal-pay/core'
+import { signMockCallback } from '@nepal-pay/mock'
 import { callbackData } from './helpers.js'
 
 describe('hono example', () => {

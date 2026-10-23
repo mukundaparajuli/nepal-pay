@@ -1,5 +1,5 @@
 {
-  "name": "nepal-payments",
+  "name": "nepal-pay",
   "version": "0.1.0",
   "private": true,
   "description": "Stateless Nepal payment gateway SDK monorepo",
@@ -9,6 +9,9 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r dev",
+    "docs:dev": "pnpm --filter @nepal-pay/docs dev",
+    "docs:build": "pnpm --filter @nepal-pay/docs build",
+    "docs:preview": "pnpm --filter @nepal-pay/docs preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:bun": "bun test tests/framework/hono.bun.test.ts",

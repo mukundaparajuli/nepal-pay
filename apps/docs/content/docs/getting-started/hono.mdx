@@ -1,0 +1,355 @@
+---
+title: Hono
+description: Use the SDK on Node.js, Bun, Deno, and edge runtimes.
+---
+
+# Hono
+
+Hono is built on Web standards, and so is the SDK. That makes integration
+direct: no adapters, no polyfills, and the same code on Node.js, Bun, Deno, and
+edge workers.
+
+This guide builds a complete app with:
+
+```text
+POST /checkout   create an order + checkout
+GET  /callback   verify + fulfill
+POST /simulate   mock-only payment simulation
+```
+
+## Setup
+
+```bash
+pnpm add @nepal-pay/core @nepal-pay/mock hono @hono/node-server
+pnpm add -D tsx typescript
+```
+
+## The app
+
+```ts
+// src/app.ts
+import { Hono, type Context } from 'hono'
+import {
+  createOrder,
+  moneyFromDecimal,
+  PaymentError,
+  NepalPayError,
+  type GatewayAdapter,
+  type Order,
+  type TxnRef,
+  type UnverifiedCallback,
+} from '@nepal-pay/core'
+import type { MockGateway } from '@nepal-pay/mock'
+
+interface Store {
+  orders: Map<string, Order>
+  txnToOrder: Map<string, string>
+  fulfilled: Set<string>
+}
+
+function createStore(): Store {
+  return {
+    orders: new Map(),
+    txnToOrder: new Map(),
+    fulfilled: new Set(),
+  }
+}
+
+export function createApp(
+  gateway: GatewayAdapter,
+  store = createStore()
+): Hono {
+  const app = new Hono()
+
+  app.post('/checkout', async (c) => {
+    const body = await c.req.json().catch(() => null)
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      typeof (body as { orderId?: unknown }).orderId !== 'string' ||
+      typeof (body as { amount?: unknown }).amount !== 'string'
+    ) {
+      return c.json(
+        {
+          error: 'INVALID_REQUEST',
+          message: 'orderId and amount are required',
+        },
+        400
+      )
+    }
+
+    try {
+      // In production, look the amount up from your database.
+      const input = body as { orderId: string; amount: string }
+      const order = createOrder({
+        id: input.orderId,
+        amount: moneyFromDecimal(input.amount),
+      })
+      store.orders.set(order.id, order)
+
+      const { checkout, txnRef } = await gateway.createCheckout(order)
+      store.txnToOrder.set(txnRef.id, order.id)
+
+      // Form-POST gateways (eSewa, connectIPS) need real HTML.
+      if (checkout.type === 'form_post') {
+        return c.html(renderForm(checkout.url, checkout.formParams))
+      }
+
+      return c.json({ checkout, txnRef })
+    } catch (error) {
+      return errorResponse(c, error)
+    }
+  })
+
+  app.get('/callback', async (c) => {
+    try {
+      const callback = gateway.parseCallback({ query: c.req.query() })
+      const payment = await processCallback(gateway, store, callback)
+      return c.json({ orderId: payment.orderId, status: payment.status })
+    } catch (error) {
+      return errorResponse(c, error)
+    }
+  })
+
+  // connectIPS posts a form body instead of using a query string.
+  app.post('/callback', async (c) => {
+    try {
+      const body = await c.req.parseBody()
+      const callback = gateway.parseCallback({
+        query: c.req.query(),
+        body,
+      })
+      const payment = await processCallback(gateway, store, callback)
+      return c.json({ orderId: payment.orderId, status: payment.status })
+    } catch (error) {
+      return errorResponse(c, error)
+    }
+  })
+
+  // DEV ONLY. Remove in production.
+  app.post('/simulate', async (c) => {
+    if (!isMockGateway(gateway)) {
+      return c.json({ error: 'SIMULATION_UNSUPPORTED' }, 400)
+    }
+
+    const body = await c.req.json().catch(() => null)
+    const txnRef = readTxnRef(body)
+    if (txnRef === undefined) {
+      return c.json({ error: 'INVALID_TXN_REF' }, 400)
+    }
+
+    try {
+      await gateway.pay(txnRef)
+      const raw = await gateway.generateCallback(txnRef)
+      const callback = gateway.parseCallback(raw)
+      const payment = await processCallback(gateway, store, callback)
+      return c.json({ orderId: payment.orderId, status: payment.status })
+    } catch (error) {
+      return errorResponse(c, error)
+    }
+  })
+
+  return app
+}
+
+async function processCallback(
+  gateway: GatewayAdapter,
+  store: Store,
+  callback: UnverifiedCallback
+) {
+  const txnId = txnIdFromCallback(callback)
+  const orderId = store.txnToOrder.get(txnId)
+  if (orderId === undefined) {
+    throw new PaymentError('Unknown checkout', 'UNKNOWN_TRANSACTION')
+  }
+
+  const expected = store.orders.get(orderId)
+  if (expected === undefined) {
+    throw new PaymentError('Unknown order', 'ORDER_MISMATCH')
+  }
+
+  const payment = await gateway.verify(callback, { expected })
+
+  if (payment.status === 'completed' && !store.fulfilled.has(payment.orderId)) {
+    store.fulfilled.add(payment.orderId)
+    // await db.orders.markPaid(payment.orderId)
+  }
+
+  return payment
+}
+
+function txnIdFromCallback(callback: UnverifiedCallback): string {
+  switch (callback.gateway) {
+    case 'mock':
+      return String(callback.data.txn_id ?? '')
+    case 'esewa':
+      return String(callback.data.transaction_uuid ?? '')
+    case 'khalti':
+      return String(callback.data.pidx ?? '')
+    case 'connectips':
+      return String(callback.data.TXNID ?? '')
+    case 'fonepay':
+      return String(callback.data.PRN ?? '')
+  }
+}
+
+function renderForm(
+  action: string,
+  fields: Readonly<Record<string, string>>
+): string {
+  const inputs = Object.entries(fields)
+    .map(
+      ([name, value]) =>
+        `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
+    )
+    .join('')
+
+  return `<!doctype html>
+<form id="pay" method="POST" action="${escapeHtml(action)}">
+  ${inputs}
+</form>
+<script>document.getElementById('pay').submit()</script>`
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function isMockGateway(gateway: GatewayAdapter): gateway is MockGateway {
+  return (
+    typeof (gateway as Partial<MockGateway>).pay === 'function' &&
+    typeof (gateway as Partial<MockGateway>).generateCallback === 'function'
+  )
+}
+
+function readTxnRef(body: unknown): TxnRef | undefined {
+  if (typeof body !== 'object' || body === null) return undefined
+  const value = (body as { txnRef?: unknown }).txnRef
+  if (typeof value !== 'object' || value === null) return undefined
+  const ref = value as { id?: unknown; gateway?: unknown }
+  if (typeof ref.id !== 'string' || typeof ref.gateway !== 'string') {
+    return undefined
+  }
+  return ref as TxnRef
+}
+
+function errorResponse(c: Context, error: unknown) {
+  if (error instanceof NepalPayError) {
+    return c.json({ error: error.code, message: error.message }, 400)
+  }
+  console.error(error)
+  return c.json({ error: 'INTERNAL' }, 500)
+}
+```
+
+## Serve it on Node.js
+
+```ts
+// src/server.ts
+import { serve } from '@hono/node-server'
+import { createMockGateway } from '@nepal-pay/mock'
+import { createApp } from './app.js'
+
+const gateway = createMockGateway({
+  secretKey: process.env.MOCK_SECRET_KEY ?? 'dev-secret',
+})
+
+serve({ fetch: createApp(gateway).fetch, port: 3000 })
+```
+
+## Serve it on Bun
+
+```ts
+// src/bun.ts
+import { createMockGateway } from '@nepal-pay/mock'
+import { createApp } from './app.js'
+
+const app = createApp(
+  createMockGateway({ secretKey: process.env.MOCK_SECRET_KEY ?? 'dev-secret' })
+)
+
+export default {
+  port: 3000,
+  fetch: app.fetch,
+}
+```
+
+## Run
+
+```bash
+pnpm tsx src/server.ts
+```
+
+```bash
+curl -s -X POST localhost:3000/checkout \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"ORDER-HONO-1","amount":"230.00"}'
+
+curl -s -X POST localhost:3000/simulate \
+  -H 'content-type: application/json' \
+  -d '{"txnRef":{"id":"<txn id from checkout>","gateway":"mock"}}'
+```
+
+## Form POST checkouts
+
+If the gateway returns `form_post`, return an HTML page that auto-submits:
+
+```ts
+if (checkout.type === 'form_post') {
+  return c.html(renderForm(checkout.url, checkout.formParams))
+}
+```
+
+Do not redirect. The browser must POST the signed fields to the gateway.
+
+```ts
+function renderForm(url: string, params: Record<string, string>): string {
+  const fields = Object.entries(params)
+    .map(
+      ([name, value]) =>
+        `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
+    )
+    .join('')
+
+  return `
+    <form id="pay" method="POST" action="${escapeHtml(url)}">
+      ${fields}
+    </form>
+    <script>document.getElementById('pay').submit()</script>
+  `
+}
+```
+
+## Edge runtimes
+
+- `fetch` and WebCrypto are the only requirements, so the SDK works on Workers
+  and other edge runtimes.
+- Do not use connectIPS PFX conversion in an edge function. Convert once at
+  deploy time and provide the PEM.
+- Keep the mock gateway out of production bundles.
+
+## Testing
+
+Hono's `app.request()` is a convenient way to test routes without a port:
+
+```ts
+import { createMockGateway } from '@nepal-pay/mock'
+import { createApp } from './src/app.js'
+
+const app = createApp(createMockGateway({ secretKey: 'test' }))
+
+const response = await app.request('/checkout', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ orderId: 'ORDER-1', amount: '100.00' }),
+})
+```
+
+See the runnable
+[`apps/hono-example`](https://github.com/mukundaparajuli/nepal-pay/tree/main/apps/hono-example)
+for a complete app with a browser UI.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { runCli } from '@nepal-payments/cli'
+import { runCli } from '@nepal-pay/cli'
 import { makeHarness } from './harness.js'
 
 describe('npay init', () => {

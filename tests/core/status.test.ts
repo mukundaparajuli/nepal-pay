@@ -3,7 +3,7 @@ import {
   PAYMENT_STATUSES,
   isPaymentStatus,
   type PaymentStatus,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 describe('payment states', () => {
   it('defines exactly the six payment states', () => {

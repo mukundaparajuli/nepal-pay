@@ -13,7 +13,7 @@ import {
   base64DecodeBytes,
   isValidOrderId,
   PaymentError,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 
 describe('sha256', () => {
   it('matches the known empty-string digest', async () => {

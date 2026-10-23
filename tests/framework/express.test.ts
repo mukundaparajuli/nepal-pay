@@ -5,8 +5,8 @@ import {
   createExampleStore,
 } from '../../apps/express-example/src/app.js'
 import { mockGateway } from '../mock/helpers.js'
-import { safeBase64Encode } from '@nepal-payments/core'
-import { signMockCallback } from '@nepal-payments/mock'
+import { safeBase64Encode } from '@nepal-pay/core'
+import { signMockCallback } from '@nepal-pay/mock'
 import { callbackData } from './helpers.js'
 
 describe('express example', () => {

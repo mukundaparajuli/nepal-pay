@@ -9,7 +9,7 @@ import {
   type UnverifiedCallback,
   type VerifiedPayment,
   type VerifyOptions,
-} from '@nepal-payments/core'
+} from '@nepal-pay/core'
 import type {
   ConnectIpsCheckoutOptions,
   ConnectIpsConfig,

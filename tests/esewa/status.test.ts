@@ -3,8 +3,8 @@ import {
   VerificationError,
   isVerifiedPayment,
   moneyFromDecimal,
-} from '@nepal-payments/core'
-import type { TxnRef } from '@nepal-payments/core'
+} from '@nepal-pay/core'
+import type { TxnRef } from '@nepal-pay/core'
 import statusNotFoundFixture from '../fixtures/esewa/status-not-found.json'
 import statusCompleteFixture from '../fixtures/esewa/status-complete.json'
 import {

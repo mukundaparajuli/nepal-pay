@@ -1,4 +1,4 @@
-import { base64EncodeBytes, VerificationError } from '@nepal-payments/core'
+import { base64EncodeBytes, VerificationError } from '@nepal-pay/core'
 import type {
   ConnectIpsApiResponse,
   ResolvedConnectIpsConfig,

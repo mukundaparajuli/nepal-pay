@@ -11,42 +11,42 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: '@nepal-payments/core/internal',
+        find: '@nepal-pay/core/internal',
         replacement: path.resolve(__dirname, './packages/core/src/internal.ts'),
       },
       {
-        find: '@nepal-payments/core',
+        find: '@nepal-pay/core',
         replacement: path.resolve(__dirname, './packages/core/src'),
       },
       {
-        find: '@nepal-payments/connectips/pfx',
+        find: '@nepal-pay/connectips/pfx',
         replacement: path.resolve(
           __dirname,
           './packages/connectips/src/pfx.ts'
         ),
       },
       {
-        find: '@nepal-payments/connectips',
+        find: '@nepal-pay/connectips',
         replacement: path.resolve(__dirname, './packages/connectips/src'),
       },
       {
-        find: '@nepal-payments/fonepay',
+        find: '@nepal-pay/fonepay',
         replacement: path.resolve(__dirname, './packages/fonepay/src'),
       },
       {
-        find: '@nepal-payments/cli',
+        find: '@nepal-pay/cli',
         replacement: path.resolve(__dirname, './packages/cli/src'),
       },
       {
-        find: '@nepal-payments/esewa',
+        find: '@nepal-pay/esewa',
         replacement: path.resolve(__dirname, './packages/esewa/src'),
       },
       {
-        find: '@nepal-payments/khalti',
+        find: '@nepal-pay/khalti',
         replacement: path.resolve(__dirname, './packages/khalti/src'),
       },
       {
-        find: '@nepal-payments/mock',
+        find: '@nepal-pay/mock',
         replacement: path.resolve(__dirname, './packages/mock/src'),
       },
     ],

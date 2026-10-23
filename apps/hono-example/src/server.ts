@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { serve } from '@hono/node-server'
-import type { GatewayAdapter } from '@nepal-payments/core'
-import { createMockGateway } from '@nepal-payments/mock'
+import type { GatewayAdapter } from '@nepal-pay/core'
+import { createMockGateway } from '@nepal-pay/mock'
 import { createApp } from './app.ts'
 
 export interface RunningServer {
