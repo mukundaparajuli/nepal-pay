@@ -4,8 +4,8 @@ A stateless TypeScript SDK for eSewa, Khalti, connectIPS, and Fonepay. Amounts
 use exact `bigint` minor units, every gateway shares one adapter contract, and a
 deterministic mock gateway covers tests and local development.
 
-[Documentation](https://nepal-payments.vercel.app/docs/) |
-[Quickstart](https://nepal-payments.vercel.app/docs/getting-started/quickstart/)
+[Documentation](https://nepal-pay.netlify.app/docs/) |
+[Quickstart](https://nepal-pay.netlify.app/docs/getting-started/quickstart/)
 
 ## Install
 
